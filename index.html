@@ -1,0 +1,4061 @@
+<!DOCTYPE html>
+<html lang="vi" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DocuCanvas Studio — Trình Soạn Thảo Văn Bản & Không Gian Vẽ Đa Lớp</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Plus Jakarta Sans', 'sans-serif'],
+            display: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            serif: ['Merriweather', 'Playfair Display', 'serif']
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet" />
+
+  <!-- FontAwesome 6 Free CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- Client-side Export Libraries (html2pdf.js & FileSaver.js) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <!-- Firebase Compat SDKs for Optional Live Cloud Persistence -->
+  <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-app-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-firestore-compat.js"></script>
+
+  <style>
+    :root {
+      --accent-primary: #4f46e5;
+      --accent-secondary: #7c3aed;
+      --accent-tertiary: #06b6d4;
+      --accent-soft: rgba(79, 70, 229, 0.1);
+      --accent-border: rgba(79, 70, 229, 0.35);
+      --bg-workspace: #f0f4f9;
+      --bg-glass: rgba(255, 255, 255, 0.86);
+      --bg-panel: #ffffff;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --border-subtle: #e2e8f0;
+      --page-bg: #ffffff;
+      --page-width: 794px;
+      --page-min-height: 1123px;
+      --page-padding: 64px;
+    }
+
+    html.dark {
+      --bg-workspace: #0f172a;
+      --bg-glass: rgba(30, 41, 59, 0.86);
+      --bg-panel: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --border-subtle: #334155;
+      --page-bg: #ffffff;
+    }
+
+    body[data-theme="ocean"] {
+      --accent-primary: #2563eb;
+      --accent-secondary: #0284c7;
+      --accent-tertiary: #06b6d4;
+      --accent-soft: rgba(37, 99, 235, 0.12);
+      --accent-border: rgba(37, 99, 235, 0.38);
+    }
+
+    body[data-theme="purple"] {
+      --accent-primary: #4f46e5;
+      --accent-secondary: #7c3aed;
+      --accent-tertiary: #ec4899;
+      --accent-soft: rgba(124, 58, 237, 0.12);
+      --accent-border: rgba(124, 58, 237, 0.38);
+    }
+
+    body[data-theme="emerald"] {
+      --accent-primary: #059669;
+      --accent-secondary: #0d9488;
+      --accent-tertiary: #10b981;
+      --accent-soft: rgba(5, 150, 105, 0.12);
+      --accent-border: rgba(5, 150, 105, 0.38);
+    }
+
+    body[data-theme="sunset"] {
+      --accent-primary: #ea580c;
+      --accent-secondary: #e11d48;
+      --accent-tertiary: #f59e0b;
+      --accent-soft: rgba(234, 88, 12, 0.12);
+      --accent-border: rgba(234, 88, 12, 0.38);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--bg-workspace);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .glass-bar {
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-color: var(--border-subtle);
+    }
+
+    .accent-gradient-bg {
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary), var(--accent-tertiary));
+    }
+
+    .accent-gradient-text {
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary), var(--accent-tertiary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .toolbar-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 30px;
+      height: 30px;
+      padding: 0 6px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text-primary);
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+
+    .toolbar-btn:hover {
+      background-color: var(--accent-soft);
+      color: var(--accent-primary);
+    }
+
+    .toolbar-btn.active {
+      background-color: var(--accent-soft);
+      color: var(--accent-primary);
+      box-shadow: inset 0 0 0 1px var(--accent-border);
+      font-weight: 600;
+    }
+
+    /* Document Page & Layered Canvas Architecture */
+    #page-stage-wrapper {
+      transform-origin: top center;
+      transition: transform 0.15s ease;
+    }
+
+    #doc-page {
+      position: relative;
+      width: var(--page-width);
+      min-height: var(--page-min-height);
+      background-color: var(--page-bg);
+      box-shadow: 0 10px 35px -5px rgba(15, 23, 42, 0.12), 0 2px 10px -2px rgba(15, 23, 42, 0.06);
+      border: 1px solid #cbd5e1;
+      margin: 0 auto;
+      color: #0f172a;
+      overflow: visible;
+    }
+
+    /* 3-Layer Z-Index Architecture on Page */
+    #underlay-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    #editor-content {
+      position: relative;
+      z-index: 20;
+      min-height: var(--page-min-height);
+      padding: var(--page-padding);
+      outline: none;
+      user-select: text;
+      font-size: 11pt;
+      line-height: 1.6;
+      color: #1e293b;
+      background: transparent;
+      word-wrap: break-word;
+    }
+
+    /* Ensure editor text nodes have transparent background by default so Underlay shows through */
+    #editor-content p,
+    #editor-content h1,
+    #editor-content h2,
+    #editor-content h3,
+    #editor-content h4,
+    #editor-content ul,
+    #editor-content ol,
+    #editor-content li {
+      background-color: transparent;
+    }
+
+    #editor-content h1 {
+      font-size: 22pt;
+      font-weight: 800;
+      margin: 0.6em 0 0.35em;
+      line-height: 1.25;
+      color: #0f172a;
+    }
+
+    #editor-content h2 {
+      font-size: 16pt;
+      font-weight: 700;
+      margin: 0.6em 0 0.3em;
+      line-height: 1.3;
+      color: #1e293b;
+    }
+
+    #editor-content h3 {
+      font-size: 13pt;
+      font-weight: 600;
+      margin: 0.5em 0 0.25em;
+      color: #334155;
+    }
+
+    #editor-content h4 {
+      font-size: 11.5pt;
+      font-weight: 600;
+      margin: 0.4em 0 0.2em;
+      color: #475569;
+    }
+
+    #editor-content p {
+      margin: 0 0 0.65em 0;
+    }
+
+    #editor-content ul {
+      list-style-type: disc;
+      padding-left: 1.75rem;
+      margin-bottom: 0.75em;
+    }
+
+    #editor-content ol {
+      list-style-type: decimal;
+      padding-left: 1.75rem;
+      margin-bottom: 0.75em;
+    }
+
+    #editor-content blockquote {
+      border-left: 4px solid var(--accent-primary);
+      background: rgba(79, 70, 229, 0.05);
+      padding: 10px 16px;
+      margin: 12px 0;
+      border-radius: 0 8px 8px 0;
+      font-style: italic;
+      color: #334155;
+    }
+
+    #editor-content pre {
+      font-family: 'JetBrains Mono', monospace;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 14px 16px;
+      border-radius: 8px;
+      font-size: 9.5pt;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+
+    #editor-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      background: rgba(255, 255, 255, 0.88);
+    }
+
+    #editor-content table th,
+    #editor-content table td {
+      border: 1px solid #cbd5e1;
+      padding: 8px 12px;
+      min-width: 60px;
+      vertical-align: top;
+    }
+
+    #editor-content table th {
+      background-color: #f1f5f9;
+      font-weight: 600;
+    }
+
+    #overlay-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    /* Interactive Drawing Zone Container */
+    .drawing-zone {
+      position: absolute;
+      border: 1.5px dashed rgba(99, 102, 241, 0.45);
+      border-radius: 6px;
+      transition: box-shadow 0.15s ease, border-color 0.15s ease;
+      pointer-events: auto;
+      user-select: none;
+    }
+
+    .drawing-zone.zone-hidden {
+      display: none !important;
+    }
+
+    .drawing-zone.zone-clean-view {
+      border-color: transparent;
+    }
+
+    .drawing-zone:hover {
+      border-color: rgba(79, 70, 229, 0.8);
+    }
+
+    .drawing-zone.selected {
+      border: 2px solid var(--accent-primary);
+      box-shadow: 0 0 0 3px var(--accent-soft), 0 8px 25px -5px rgba(15, 23, 42, 0.15);
+    }
+
+    /* Layer 3: Inline Mode (Break Text & Wrap Text) */
+    .drawing-zone.mode-inline-break {
+      position: relative !important;
+      display: block !important;
+      margin: 16px auto !important;
+      clear: both !important;
+      left: auto !important;
+      top: auto !important;
+      z-index: 25;
+    }
+
+    .drawing-zone.mode-inline-wrap-left {
+      position: relative !important;
+      float: left !important;
+      margin: 6px 20px 12px 0 !important;
+      left: auto !important;
+      top: auto !important;
+      z-index: 25;
+    }
+
+    .drawing-zone.mode-inline-wrap-right {
+      position: relative !important;
+      float: right !important;
+      margin: 6px 0 12px 20px !important;
+      left: auto !important;
+      top: auto !important;
+      z-index: 25;
+    }
+
+    /* Click-through state for Overlay zones when not actively editing */
+    .drawing-zone.click-through-active:not(.selected) {
+      pointer-events: none !important;
+    }
+
+    /* Zone Header Drag & Quick Controls Bar */
+    .zone-header-bar {
+      position: absolute;
+      top: -28px;
+      left: -2px;
+      display: none;
+      align-items: center;
+      gap: 4px;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 6px 6px 0 0;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      box-shadow: 0 -2px 10px rgba(79, 70, 229, 0.25);
+      cursor: move;
+      z-index: 50;
+    }
+
+    .drawing-zone:hover .zone-header-bar,
+    .drawing-zone.selected .zone-header-bar {
+      display: flex;
+    }
+
+    /* Zone Viewport HUD (Bottom Right inside Zone) */
+    .zone-viewport-hud {
+      position: absolute;
+      bottom: 6px;
+      right: 6px;
+      display: none;
+      align-items: center;
+      gap: 3px;
+      background: rgba(15, 23, 42, 0.78);
+      backdrop-filter: blur(6px);
+      color: #f8fafc;
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      z-index: 45;
+    }
+
+    .drawing-zone:hover .zone-viewport-hud,
+    .drawing-zone.selected .zone-viewport-hud {
+      display: flex;
+    }
+
+    /* 8 Resize Handles */
+    .resize-handle {
+      position: absolute;
+      width: 9px;
+      height: 9px;
+      background: #ffffff;
+      border: 2px solid var(--accent-primary);
+      border-radius: 2px;
+      display: none;
+      z-index: 55;
+    }
+
+    .drawing-zone.selected .resize-handle {
+      display: block;
+    }
+
+    .resize-handle.nw { top: -5px; left: -5px; cursor: nwse-resize; }
+    .resize-handle.n  { top: -5px; left: calc(50% - 4.5px); cursor: ns-resize; }
+    .resize-handle.ne { top: -5px; right: -5px; cursor: nesw-resize; }
+    .resize-handle.e  { top: calc(50% - 4.5px); right: -5px; cursor: ew-resize; }
+    .resize-handle.se { bottom: -5px; right: -5px; cursor: nwse-resize; }
+    .resize-handle.s  { bottom: -5px; left: calc(50% - 4.5px); cursor: ns-resize; }
+    .resize-handle.sw { bottom: -5px; left: -5px; cursor: nesw-resize; }
+    .resize-handle.w  { top: calc(50% - 4.5px); left: -5px; cursor: ew-resize; }
+
+    /* Border Move Zones (10px edge padding around zone) */
+    .zone-edge-drag {
+      position: absolute;
+      z-index: 40;
+      cursor: move;
+    }
+    .zone-edge-drag.top { top: -6px; left: 6px; right: 6px; height: 10px; }
+    .zone-edge-drag.bottom { bottom: -6px; left: 6px; right: 6px; height: 10px; }
+    .zone-edge-drag.left { left: -6px; top: 6px; bottom: 6px; width: 10px; }
+    .zone-edge-drag.right { right: -6px; top: 6px; bottom: 6px; width: 10px; }
+
+    /* Custom Brush Cursor Preview */
+    #brush-cursor-preview {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      border-radius: 50%;
+      border: 1.5px solid rgba(15, 23, 42, 0.8);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85);
+      transform: translate(-50%, -50%);
+      display: none;
+    }
+
+    /* Create Zone Follower Tooltip */
+    #create-zone-tooltip {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 999px;
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+      display: none;
+      white-space: nowrap;
+    }
+
+    /* Creation Marquee Box on Page */
+    #creation-marquee {
+      position: absolute;
+      border: 2px dashed #4f46e5;
+      background: rgba(79, 70, 229, 0.08);
+      border-radius: 6px;
+      z-index: 80;
+      pointer-events: none;
+      display: none;
+    }
+
+    #creation-marquee-label {
+      position: absolute;
+      bottom: -24px;
+      right: 0;
+      background: #4f46e5;
+      color: #ffffff;
+      font-size: 10.5px;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    /* Rulers */
+    .ruler-h {
+      height: 22px;
+      background: repeating-linear-gradient(
+        to right,
+        transparent,
+        transparent 9px,
+        rgba(148, 163, 184, 0.35) 9px,
+        rgba(148, 163, 184, 0.35) 10px
+      );
+    }
+
+    .ruler-v {
+      width: 22px;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent,
+        transparent 9px,
+        rgba(148, 163, 184, 0.35) 9px,
+        rgba(148, 163, 184, 0.35) 10px
+      );
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.45);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 116, 139, 0.7);
+    }
+
+    /* Print Stylesheet */
+    @media print {
+      body {
+        background: #ffffff !important;
+        overflow: visible !important;
+      }
+      #top-header,
+      #ribbon-toolbar,
+      #drawing-studio-bar,
+      #left-sidebar,
+      #right-inspector,
+      #status-bar,
+      #ruler-top-bar,
+      #ruler-left-bar,
+      .zone-header-bar,
+      .zone-viewport-hud,
+      .resize-handle {
+        display: none !important;
+      }
+      .drawing-zone {
+        border: none !important;
+        box-shadow: none !important;
+      }
+      #workspace-scroll {
+        overflow: visible !important;
+        padding: 0 !important;
+      }
+      #doc-page {
+        box-shadow: none !important;
+        border: none !important;
+        margin: 0 !important;
+        width: 100% !important;
+      }
+    }
+  </style>
+</head>
+<body data-theme="purple" class="h-screen w-screen flex flex-col select-none">
+
+  <!-- Custom Floating Brush Cursor & Creation Tooltip -->
+  <div id="brush-cursor-preview"></div>
+  <div id="create-zone-tooltip">
+    <i class="fa-solid fa-crosshairs mr-1"></i> Nhấp và kéo trên trang giấy để tạo Không Gian Vẽ (ESC để hủy)
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-10 right-5 z-[9990] flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ==================== TOP HEADER & MENU BAR ==================== -->
+  <header id="top-header" class="glass-bar border-b px-3 py-1.5 flex items-center justify-between gap-2 z-40 shrink-0">
+    <!-- Left: Brand Logo + Document Title + Menu Bar -->
+    <div class="flex items-center gap-3 min-w-0">
+      <button id="btn-brand-home" onclick="openDocDashboardModal()" title="Quản lý Tài liệu (Dashboard)" class="w-10 h-10 rounded-xl accent-gradient-bg flex items-center justify-center text-white shadow-md hover:opacity-95 transition shrink-0">
+        <i class="fa-solid fa-pen-ruler text-lg"></i>
+      </button>
+
+      <div class="flex flex-col min-w-0">
+        <!-- Document Title Row -->
+        <div class="flex items-center gap-2">
+          <input
+            id="doc-title-input"
+            type="text"
+            value="Kiến trúc Hệ thống & Thiết kế Đa Lớp — DocuCanvas Studio"
+             oninput="handleTitleChange(this.value)"
+            class="font-display font-bold text-sm sm:text-base bg-transparent border border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-800 rounded px-1.5 py-0.5 outline-none truncate max-w-[240px] sm:max-w-[380px] text-slate-800 dark:text-slate-100"
+            title="Nhấp để đổi tên tài liệu"
+          />
+          <button id="btn-star-doc" onclick="toggleStarDocument()" title="Đánh dấu quan trọng" class="text-slate-400 hover:text-amber-400 text-sm px-1 transition">
+            <i id="star-doc-icon" class="fa-regular fa-star"></i>
+          </button>
+          <span id="sync-status-badge" onclick="openCloudSetupModal()" class="cursor-pointer inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <i id="sync-status-icon" class="fa-solid fa-cloud-check"></i>
+            <span id="sync-status-text">Đã lưu trên thiết bị</span>
+          </span>
+        </div>
+
+        <!-- Classic Google Docs Menu Bar -->
+        <nav class="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300 mt-0.5 flex-wrap">
+          <!-- File Menu Dropdown -->
+          <div class="relative group">
+            <button type="button" onclick="toggleTopDropdown('menu-file')" class="px-2 py-0.5 rounded hover:bg-slate-200/70 dark:hover:bg-slate-700/70 transition">Tệp</button>
+            <div id="menu-file" class="top-dropdown hidden absolute left-0 top-full mt-1 w-60 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1.5 z-50">
+              <button type="button" onclick="createNewDocument()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-file-circle-plus w-5 text-indigo-500"></i> Tài liệu mới</span>
+                <span class="text-[10px] text-slate-400">Alt+N</span>
+              </button>
+              <button type="button" onclick="openDocDashboardModal()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-folder-open w-5 text-amber-500"></i> Danh sách tài liệu</span>
+                <span class="text-[10px] text-slate-400">Ctrl+O</span>
+              </button>
+              <button type="button" onclick="duplicateCurrentDocument()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-copy w-5 text-blue-500"></i> Nhân bản tài liệu</span>
+              </button>
+              <button type="button" onclick="openVersionHistoryModal()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-clock-rotate-left w-5 text-purple-500"></i> Lịch sử phiên bản</span>
+              </button>
+              <div class="my-1 border-t border-slate-100 dark:border-slate-700"></div>
+              <button type="button" onclick="triggerImportDCanvas()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-file-import w-5 text-teal-500"></i> Nhập dự án (.dcanvas)</span>
+              </button>
+              <button type="button" onclick="exportDCanvasProject()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-cubes w-5 text-indigo-600"></i> Xuất dự án gốc (.dcanvas)</span>
+              </button>
+              <div class="my-1 border-t border-slate-100 dark:border-slate-700"></div>
+              <button type="button" onclick="exportToPDF()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-file-pdf w-5 text-rose-500"></i> Xuất PDF (.pdf chuẩn đa lớp)</span>
+              </button>
+              <button type="button" onclick="exportToWordDocx()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-file-word w-5 text-blue-600"></i> Xuất Microsoft Word (.doc)</span>
+              </button>
+              <button type="button" onclick="exportToStandaloneHTML()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-file-code w-5 text-orange-500"></i> Xuất HTML độc lập (.html)</span>
+              </button>
+              <button type="button" onclick="exportToMarkdown()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-brands fa-markdown w-5 text-slate-600"></i> Xuất Markdown (.md)</span>
+              </button>
+              <button type="button" onclick="exportToPlainText()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-file-lines w-5 text-slate-500"></i> Xuất Văn bản thuần (.txt)</span>
+              </button>
+              <div class="my-1 border-t border-slate-100 dark:border-slate-700"></div>
+              <button type="button" onclick="printDocument()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-print w-5 text-slate-600"></i> In ấn chuẩn A4</span>
+                <span class="text-[10px] text-slate-400">Ctrl+P</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Edit Menu -->
+          <div class="relative">
+            <button type="button" onclick="toggleTopDropdown('menu-edit')" class="px-2 py-0.5 rounded hover:bg-slate-200/70 dark:hover:bg-slate-700/70 transition">Chỉnh sửa</button>
+            <div id="menu-edit" class="top-dropdown hidden absolute left-0 top-full mt-1 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1.5 z-50">
+              <button type="button" onclick="execEditorCmd('undo')" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-rotate-left w-5"></i> Hoàn tác văn bản</span>
+                <span class="text-[10px] text-slate-400">Ctrl+Z</span>
+              </button>
+              <button type="button" onclick="execEditorCmd('redo')" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-rotate-right w-5"></i> Làm lại văn bản</span>
+                <span class="text-[10px] text-slate-400">Ctrl+Y</span>
+              </button>
+              <div class="my-1 border-t border-slate-100 dark:border-slate-700"></div>
+              <button type="button" onclick="openFindReplaceModal()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-magnifying-glass w-5 text-indigo-500"></i> Tìm kiếm & Thay thế</span>
+                <span class="text-[10px] text-slate-400">Ctrl+F</span>
+              </button>
+              <button type="button" onclick="execEditorCmd('selectAll')" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-object-group w-5"></i> Chọn tất cả</span>
+                <span class="text-[10px] text-slate-400">Ctrl+A</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Insert Menu -->
+          <div class="relative">
+            <button type="button" onclick="toggleTopDropdown('menu-insert')" class="px-2 py-0.5 rounded hover:bg-slate-200/70 dark:hover:bg-slate-700/70 transition">Chèn</button>
+            <div id="menu-insert" class="top-dropdown hidden absolute left-0 top-full mt-1 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1.5 z-50">
+              <button type="button" onclick="startCreateZoneMode()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between font-semibold text-indigo-600 dark:text-indigo-400">
+                <span><i class="fa-solid fa-paintbrush w-5"></i> Kéo tạo Không Gian Vẽ</span>
+                <span class="text-[10px]">Alt+D</span>
+              </button>
+              <button type="button" onclick="insertPresetDrawingZone('overlay')" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-layer-group w-5 text-purple-500"></i> Chèn Khung vẽ Lớp trên (Overlay)</span>
+              </button>
+              <button type="button" onclick="insertPresetDrawingZone('underlay')" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-water w-5 text-cyan-500"></i> Chèn Khung vẽ Lớp dưới (Underlay)</span>
+              </button>
+              <button type="button" onclick="insertPresetDrawingZone('inline-wrap-right')" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-align-left w-5 text-emerald-500"></i> Chèn Khung vẽ Bao quanh chữ</span>
+              </button>
+              <div class="my-1 border-t border-slate-100 dark:border-slate-700"></div>
+              <button type="button" onclick="openTableModal()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-table w-5 text-emerald-600"></i> Bảng biểu tương tác (m×n)</span>
+              </button>
+              <button type="button" onclick="openImageInsertModal()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-regular fa-image w-5 text-blue-500"></i> Hình ảnh (Máy tính / URL)</span>
+              </button>
+              <button type="button" onclick="openLinkInsertModal()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-link w-5 text-indigo-500"></i> Liên kết (Hyperlink)</span>
+              </button>
+              <button type="button" onclick="insertChecklistBlock()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-list-check w-5 text-teal-500"></i> Danh sách công việc (Checklist)</span>
+              </button>
+              <button type="button" onclick="insertCodeBlock()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-code w-5 text-amber-500"></i> Khối mã nguồn (Code Block)</span>
+              </button>
+              <button type="button" onclick="insertBlockquote()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-quote-left w-5 text-rose-500"></i> Khối trích dẫn (Blockquote)</span>
+              </button>
+              <button type="button" onclick="execEditorCmd('insertHorizontalRule')" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-minus w-5 text-slate-400"></i> Đường kẻ ngang</span>
+              </button>
+              <button type="button" onclick="openSpecialCharsModal()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-omega w-5 text-purple-500"></i> Ký tự đặc biệt & Toán học</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Page Layout Menu -->
+          <div class="relative">
+            <button type="button" onclick="toggleTopDropdown('menu-page')" class="px-2 py-0.5 rounded hover:bg-slate-200/70 dark:hover:bg-slate-700/70 transition">Bố cục Trang</button>
+            <div id="menu-page" class="top-dropdown hidden absolute left-0 top-full mt-1 w-60 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1.5 z-50">
+              <div class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Khổ giấy & Hướng giấy</div>
+              <button type="button" onclick="setPageOrientation('portrait')" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-regular fa-file w-5"></i> A4 Dọc (Portrait - 794×1123)</span>
+              </button>
+              <button type="button" onclick="setPageOrientation('landscape')" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-regular fa-file-image w-5"></i> A4 Ngang (Landscape - 1123×794)</span>
+              </button>
+              <div class="my-1 border-t border-slate-100 dark:border-slate-700"></div>
+              <div class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Căn lề trang</div>
+              <button type="button" onclick="setPageMargins('64px')" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700">Lề Chuẩn (2.54 cm / 64px)</button>
+              <button type="button" onclick="setPageMargins('36px')" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700">Lề Hẹp (1.27 cm / 36px)</button>
+              <button type="button" onclick="setPageMargins('92px')" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700">Lề Rộng (3.5 cm / 92px)</button>
+              <div class="my-1 border-t border-slate-100 dark:border-slate-700"></div>
+              <div class="px-3 py-1.5 flex items-center justify-between">
+                <span>Màu nền trang giấy</span>
+                <input id="page-bg-color-picker" type="color" value="#ffffff" oninput="setPageBackgroundColor(this.value)" class="w-6 h-6 rounded cursor-pointer border-0" />
+              </div>
+              <button type="button" onclick="toggleCleanZoneBorders()" class="w-full px-3 py-1.5 text-left hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center justify-between">
+                <span><i class="fa-solid fa-eye w-5 text-indigo-500"></i> Ẩn/Hiện viền nét đứt Khung vẽ</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Deploy & Cloud Guide Button -->
+          <button type="button" onclick="openDeployGuideModal()" class="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold hover:bg-indigo-500/20 transition flex items-center gap-1">
+            <i class="fa-solid fa-rocket text-[11px]"></i> Hướng dẫn Deploy & Firebase
+          </button>
+        </nav>
+      </div>
+    </div>
+
+    <!-- Right: Theme Accent, Dark Mode, Cloud Config, Export Quick Button, Account Profile -->
+    <div class="flex items-center gap-2 shrink-0">
+      <!-- Theme Accent Dots -->
+      <div class="hidden md:flex items-center gap-1 bg-slate-200/60 dark:bg-slate-800 px-2 py-1 rounded-full border border-slate-300/60 dark:border-slate-700" title="Chọn tông màu chủ đạo">
+        <button type="button" onclick="setThemeAccent('ocean')" class="w-4 h-4 rounded-full bg-blue-600 hover:scale-110 transition" title="Ocean Blue"></button>
+        <button type="button" onclick="setThemeAccent('purple')" class="w-4 h-4 rounded-full bg-purple-600 hover:scale-110 transition ring-2 ring-offset-1 ring-purple-400" title="Royal Purple"></button>
+        <button type="button" onclick="setThemeAccent('emerald')" class="w-4 h-4 rounded-full bg-emerald-600 hover:scale-110 transition" title="Emerald Mint"></button>
+        <button type="button" onclick="setThemeAccent('sunset')" class="w-4 h-4 rounded-full bg-orange-600 hover:scale-110 transition" title="Sunset Coral"></button>
+      </div>
+
+      <!-- Dark Mode Toggle -->
+      <button id="btn-dark-mode" type="button" onclick="toggleDarkMode()" title="Chuyển đổi Sáng / Tối" class="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-slate-200/60 dark:hover:bg-slate-800 transition">
+        <i id="dark-mode-icon" class="fa-solid fa-moon text-slate-600 dark:text-amber-400"></i>
+      </button>
+
+      <!-- Cloud Setup Button -->
+      <button id="btn-cloud-config" type="button" onclick="openCloudSetupModal()" class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <i class="fa-solid fa-cloud text-cyan-500"></i>
+        <span>Cloud DB</span>
+      </button>
+
+      <!-- Quick PDF Export -->
+      <button id="btn-quick-export" type="button" onclick="exportToPDF()" class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 transition shadow-sm">
+        <i class="fa-solid fa-download"></i>
+        <span class="hidden sm:inline">Xuất PDF</span>
+      </button>
+
+      <!-- User Profile Pill -->
+      <button id="btn-user-profile" type="button" onclick="openAccountModal()" class="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 transition shadow-sm">
+        <div id="user-avatar-badge" class="w-6 h-6 rounded-full accent-gradient-bg text-white text-xs font-bold flex items-center justify-center">
+          MN
+        </div>
+        <span id="user-name-label" class="text-xs font-semibold max-w-[96px] truncate hidden sm:inline">Minh Ngọc</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN RIBBON TOOLBAR (RICH-TEXT + DRAW ZONE CTA) ==================== -->
+  <div id="ribbon-toolbar" class="glass-bar border-b px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto z-30 shrink-0">
+    <!-- Sidebar Toggle -->
+    <button type="button" onclick="toggleLeftSidebar()" class="toolbar-btn" title="Đóng/Mở Thanh bên (Outline & Layers)">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <!-- Undo / Redo / Print -->
+    <button type="button" onclick="execEditorCmd('undo')" class="toolbar-btn" title="Hoàn tác (Ctrl+Z)">
+      <i class="fa-solid fa-rotate-left"></i>
+    </button>
+    <button type="button" onclick="execEditorCmd('redo')" class="toolbar-btn" title="Làm lại (Ctrl+Y)">
+      <i class="fa-solid fa-rotate-right"></i>
+    </button>
+    <button type="button" onclick="printDocument()" class="toolbar-btn" title="In trang A4 (Ctrl+P)">
+      <i class="fa-solid fa-print"></i>
+    </button>
+
+    <!-- Zoom Selector -->
+    <select id="page-zoom-select" onchange="setPageZoom(this.value)" class="h-7 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 outline-none" title="Thu phóng trang tài liệu">
+      <option value="0.5">50%</option>
+      <option value="0.75">75%</option>
+      <option value="0.9">90%</option>
+      <option value="1" selected>100%</option>
+      <option value="1.25">125%</option>
+      <option value="1.5">150%</option>
+      <option value="2">200%</option>
+    </select>
+
+    <div class="h-5 w-px bg-slate-200 dark:bg-slate-700 mx-0.5 shrink-0"></div>
+
+    <!-- Heading Style -->
+    <select id="heading-style-select" onchange="applyHeadingBlock(this.value)" class="h-7 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 outline-none w-28" title="Kiểu đoạn văn">
+      <option value="P">Văn bản thường</option>
+      <option value="H1">Tiêu đề 1 (H1)</option>
+      <option value="H2">Tiêu đề 2 (H2)</option>
+      <option value="H3">Tiêu đề 3 (H3)</option>
+      <option value="H4">Tiêu đề 4 (H4)</option>
+      <option value="BLOCKQUOTE">Trích dẫn</option>
+      <option value="PRE">Khối Code</option>
+    </select>
+
+    <!-- Font Family -->
+    <select id="font-family-select" onchange="applyFontFamily(this.value)" class="h-7 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 outline-none w-32" title="Phông chữ">
+      <option value="Inter">Inter</option>
+      <option value="Plus Jakarta Sans">Plus Jakarta Sans</option>
+      <option value="Roboto">Roboto</option>
+      <option value="Merriweather">Merriweather</option>
+      <option value="Playfair Display">Playfair Display</option>
+      <option value="JetBrains Mono">JetBrains Mono</option>
+    </select>
+
+    <!-- Font Size (pt) -->
+    <select id="font-size-select" onchange="applyFontSizePt(this.value)" class="h-7 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 outline-none w-16" title="Cỡ chữ (pt)">
+      <option value="8pt">8</option>
+      <option value="9pt">9</option>
+      <option value="10pt">10</option>
+      <option value="11pt" selected>11</option>
+      <option value="12pt">12</option>
+      <option value="14pt">14</option>
+      <option value="16pt">16</option>
+      <option value="18pt">18</option>
+      <option value="24pt">24</option>
+      <option value="32pt">32</option>
+      <option value="48pt">48</option>
+      <option value="72pt">72</option>
+    </select>
+
+    <div class="h-5 w-px bg-slate-200 dark:bg-slate-700 mx-0.5 shrink-0"></div>
+
+    <!-- Character Formatting -->
+    <button type="button" onclick="execEditorCmd('bold')" class="toolbar-btn font-bold" title="In đậm (Ctrl+B)">B</button>
+    <button type="button" onclick="execEditorCmd('italic')" class="toolbar-btn italic font-serif" title="In nghiêng (Ctrl+I)">I</button>
+    <button type="button" onclick="execEditorCmd('underline')" class="toolbar-btn underline" title="Gạch chân (Ctrl+U)">U</button>
+    <button type="button" onclick="execEditorCmd('strikeThrough')" class="toolbar-btn line-through" title="Gạch ngang">S</button>
+    <button type="button" onclick="execEditorCmd('superscript')" class="toolbar-btn text-xs" title="Chỉ số trên">x²</button>
+    <button type="button" onclick="execEditorCmd('subscript')" class="toolbar-btn text-xs" title="Chỉ số dưới">x₂</button>
+
+    <!-- Text Color & Highlight Pickers -->
+    <label class="toolbar-btn relative cursor-pointer" title="Màu chữ">
+      <i class="fa-solid fa-font text-xs"></i>
+      <span id="text-color-bar" class="absolute bottom-1 left-1.5 right-1.5 h-1 bg-indigo-600 rounded"></span>
+      <input id="editor-forecolor-input" type="color" value="#1e293b" oninput="applyTextColor(this.value)" class="sr-only" />
+    </label>
+
+    <label class="toolbar-btn relative cursor-pointer" title="Màu tô sáng nền chữ (Highlight)">
+      <i class="fa-solid fa-highlighter text-xs text-amber-500"></i>
+      <input id="editor-hilite-input" type="color" value="#fef08a" oninput="applyHighlightColor(this.value)" class="sr-only" />
+    </label>
+
+    <button type="button" onclick="execEditorCmd('removeFormat')" class="toolbar-btn" title="Xóa định dạng">
+      <i class="fa-solid fa-eraser text-slate-500"></i>
+    </button>
+
+    <div class="h-5 w-px bg-slate-200 dark:bg-slate-700 mx-0.5 shrink-0"></div>
+
+    <!-- Alignment & Spacing -->
+    <button type="button" onclick="execEditorCmd('justifyLeft')" class="toolbar-btn" title="Căn trái"><i class="fa-solid fa-align-left"></i></button>
+    <button type="button" onclick="execEditorCmd('justifyCenter')" class="toolbar-btn" title="Căn giữa"><i class="fa-solid fa-align-center"></i></button>
+    <button type="button" onclick="execEditorCmd('justifyRight')" class="toolbar-btn" title="Căn phải"><i class="fa-solid fa-align-right"></i></button>
+    <button type="button" onclick="execEditorCmd('justifyFull')" class="toolbar-btn" title="Căn đều 2 bên"><i class="fa-solid fa-align-justify"></i></button>
+
+    <!-- Line Spacing Dropdown -->
+    <select id="line-spacing-select" onchange="applyLineSpacing(this.value)" class="h-7 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1 outline-none" title="Giãn dòng">
+      <option value="1.0">↕ 1.0</option>
+      <option value="1.15">↕ 1.15</option>
+      <option value="1.5" selected>↕ 1.5</option>
+      <option value="2.0">↕ 2.0</option>
+    </select>
+
+    <!-- Lists & Indent -->
+    <button type="button" onclick="execEditorCmd('insertUnorderedList')" class="toolbar-btn" title="Danh sách chấm đầu dòng"><i class="fa-solid fa-list-ul"></i></button>
+    <button type="button" onclick="execEditorCmd('insertOrderedList')" class="toolbar-btn" title="Danh sách đánh số"><i class="fa-solid fa-list-ol"></i></button>
+    <button type="button" onclick="insertChecklistBlock()" class="toolbar-btn" title="Chèn danh sách ô tích (Checklist)"><i class="fa-solid fa-list-check"></i></button>
+    <button type="button" onclick="execEditorCmd('outdent')" class="toolbar-btn" title="Giảm thụt lề"><i class="fa-solid fa-outdent"></i></button>
+    <button type="button" onclick="execEditorCmd('indent')" class="toolbar-btn" title="Tăng thụt lề"><i class="fa-solid fa-indent"></i></button>
+
+    <div class="h-5 w-px bg-slate-200 dark:bg-slate-700 mx-0.5 shrink-0"></div>
+
+    <!-- Quick Insert Tools -->
+    <button type="button" onclick="openTableModal()" class="toolbar-btn" title="Chèn Bảng (Table)"><i class="fa-solid fa-table"></i></button>
+    <button type="button" onclick="openImageInsertModal()" class="toolbar-btn" title="Chèn Ảnh"><i class="fa-regular fa-image"></i></button>
+    <button type="button" onclick="openLinkInsertModal()" class="toolbar-btn" title="Chèn Liên kết"><i class="fa-solid fa-link"></i></button>
+    <button type="button" onclick="openFindReplaceModal()" class="toolbar-btn" title="Tìm kiếm & Thay thế (Ctrl+F)"><i class="fa-solid fa-magnifying-glass"></i></button>
+
+    <div class="h-5 w-px bg-slate-200 dark:bg-slate-700 mx-1 shrink-0"></div>
+
+    <!-- ★ CORE FEATURE CTA: CREATE INTERACTIVE DRAWING ZONE ★ -->
+    <button
+      id="btn-create-draw-zone"
+      type="button"
+      onclick="startCreateZoneMode()"
+      class="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold text-white accent-gradient-bg shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-95 transition shrink-0"
+      title="Nhấp rồi kéo chuột trên trang tài liệu để tạo Không Gian Vẽ Đa Lớp (Alt+D)"
+    >
+      <i class="fa-solid fa-paintbrush"></i>
+      <span>Tạo Không Gian Vẽ</span>
+    </button>
+
+    <button
+      id="btn-toggle-studio-bar"
+      type="button"
+      onclick="toggleDrawingStudioBar()"
+      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/20 transition shrink-0"
+      title="Mở/Đóng Thanh Công Cụ Vẽ Chuyên Sâu (Drawing Studio)"
+    >
+      <i class="fa-solid fa-palette"></i>
+      <span>Drawing Studio</span>
+    </button>
+  </div>
+
+  <!-- ==================== CONTEXTUAL DRAWING STUDIO RIBBON ==================== -->
+  <div id="drawing-studio-bar" class="bg-gradient-to-r from-indigo-950/95 via-slate-900/95 to-violet-950/95 text-white border-b border-indigo-500/30 px-3 py-1.5 flex items-center gap-2 overflow-x-auto z-30 shrink-0 shadow-inner">
+    <!-- Active Zone Indicator -->
+    <div class="flex items-center gap-1.5 pr-2 border-r border-slate-700 shrink-0">
+      <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+      <span id="active-zone-badge" class="text-xs font-mono font-semibold text-cyan-300">Zone #1</span>
+    </div>
+
+    <!-- Group 1: Brushes & Eraser -->
+    <div class="flex items-center gap-1 bg-slate-800/90 p-0.5 rounded-lg border border-slate-700 shrink-0">
+      <button type="button" data-draw-tool="pen" onclick="selectDrawTool('pen')" class="draw-tool-btn px-2 py-1 rounded text-xs flex items-center gap-1 bg-indigo-600 text-white" title="Bút vẽ tự do (Làm mượt Bézier)">
+        <i class="fa-solid fa-pen-nib"></i><span class="hidden lg:inline">Bút</span>
+      </button>
+      <button type="button" data-draw-tool="marker" onclick="selectDrawTool('marker')" class="draw-tool-btn px-2 py-1 rounded text-xs flex items-center gap-1 hover:bg-slate-700 text-amber-300" title="Bút dạ quang (Highlighter)">
+        <i class="fa-solid fa-highlighter"></i><span class="hidden lg:inline">Dạ quang</span>
+      </button>
+      <button type="button" data-draw-tool="airbrush" onclick="selectDrawTool('airbrush')" class="draw-tool-btn px-2 py-1 rounded text-xs flex items-center gap-1 hover:bg-slate-700 text-pink-300" title="Cọ phun nghệ thuật (Airbrush)">
+        <i class="fa-solid fa-spray-can-sparkles"></i><span class="hidden lg:inline">Cọ phun</span>
+      </button>
+      <button type="button" data-draw-tool="eraser" onclick="selectDrawTool('eraser')" class="draw-tool-btn px-2 py-1 rounded text-xs flex items-center gap-1 hover:bg-slate-700 text-rose-300" title="Cục tẩy trong suốt (Eraser)">
+        <i class="fa-solid fa-eraser"></i><span class="hidden lg:inline">Tẩy</span>
+      </button>
+    </div>
+
+    <!-- Group 2: Geometric Shapes & Canvas Text -->
+    <div class="flex items-center gap-1 bg-slate-800/90 p-0.5 rounded-lg border border-slate-700 shrink-0">
+      <button type="button" data-draw-tool="line" onclick="selectDrawTool('line')" class="draw-tool-btn px-2 py-1 rounded text-xs hover:bg-slate-700" title="Đường thẳng">
+        <i class="fa-solid fa-slash"></i>
+      </button>
+      <button type="button" data-draw-tool="arrow" onclick="selectDrawTool('arrow')" class="draw-tool-btn px-2 py-1 rounded text-xs hover:bg-slate-700" title="Mũi tên">
+        <i class="fa-solid fa-arrow-trend-up"></i>
+      </button>
+      <button type="button" data-draw-tool="rect" onclick="selectDrawTool('rect')" class="draw-tool-btn px-2 py-1 rounded text-xs hover:bg-slate-700" title="Hình chữ nhật / Hình vuông">
+        <i class="fa-regular fa-square"></i>
+      </button>
+      <button type="button" data-draw-tool="ellipse" onclick="selectDrawTool('ellipse')" class="draw-tool-btn px-2 py-1 rounded text-xs hover:bg-slate-700" title="Hình tròn / Hình elip">
+        <i class="fa-regular fa-circle"></i>
+      </button>
+      <button type="button" data-draw-tool="triangle" onclick="selectDrawTool('triangle')" class="draw-tool-btn px-2 py-1 rounded text-xs hover:bg-slate-700" title="Hình tam giác">
+        <i class="fa-solid fa-play -rotate-90 text-[10px]"></i>
+      </button>
+      <button type="button" data-draw-tool="diamond" onclick="selectDrawTool('diamond')" class="draw-tool-btn px-2 py-1 rounded text-xs hover:bg-slate-700" title="Hình thoi">
+        <i class="fa-solid fa-diamond text-[10px]"></i>
+      </button>
+      <button type="button" data-draw-tool="star" onclick="selectDrawTool('star')" class="draw-tool-btn px-2 py-1 rounded text-xs hover:bg-slate-700" title="Ngôi sao 5 cánh">
+        <i class="fa-regular fa-star"></i>
+      </button>
+      <button type="button" data-draw-tool="text" onclick="selectDrawTool('text')" class="draw-tool-btn px-2 py-1 rounded text-xs hover:bg-slate-700 text-cyan-300" title="Chèn nhãn chữ trực tiếp vào Canvas">
+        <i class="fa-solid fa-font"></i>
+      </button>
+      <button type="button" data-draw-tool="pan" onclick="selectDrawTool('pan')" class="draw-tool-btn px-2 py-1 rounded text-xs hover:bg-slate-700 text-emerald-300" title="Bàn tay kéo vùng nhìn bên trong Khung vẽ (hoặc giữ Spacebar)">
+        <i class="fa-regular fa-hand"></i>
+      </button>
+    </div>
+
+    <!-- Shape Fill Mode -->
+    <select id="draw-shape-mode" onchange="updateDrawConfig('shapeMode', this.value)" class="h-7 text-xs bg-slate-800 border border-slate-700 rounded px-1.5 text-slate-100 outline-none shrink-0" title="Chế độ Hình khối (Viền / Tô đặc / Cả hai)">
+      <option value="stroke">Chỉ vẽ viền</option>
+      <option value="fill">Chỉ tô đặc</option>
+      <option value="both">Viền + Tô nền</option>
+    </select>
+
+    <!-- Stroke & Fill Colors + Quick Palette + Eyedropper -->
+    <div class="flex items-center gap-1.5 bg-slate-800/90 px-2 py-0.5 rounded-lg border border-slate-700 shrink-0">
+      <label class="flex items-center gap-1 text-[11px] cursor-pointer" title="Màu nét vẽ (Stroke Color)">
+        <span>Nét</span>
+        <input id="draw-stroke-color" type="color" value="#4f46e5" oninput="updateDrawConfig('strokeColor', this.value)" class="w-5 h-5 rounded cursor-pointer border-0 bg-transparent" />
+      </label>
+      <label class="flex items-center gap-1 text-[11px] cursor-pointer" title="Màu tô hình khối (Fill Color)">
+        <span>Tô</span>
+        <input id="draw-fill-color" type="color" value="#38bdf8" oninput="updateDrawConfig('fillColor', this.value)" class="w-5 h-5 rounded cursor-pointer border-0 bg-transparent" />
+      </label>
+      <!-- Quick Color Swatches -->
+      <div class="hidden xl:flex items-center gap-1 ml-1">
+        <button type="button" onclick="setQuickStrokeColor('#ef4444')" class="w-3.5 h-3.5 rounded-full bg-red-500 border border-white/40"></button>
+        <button type="button" onclick="setQuickStrokeColor('#f59e0b')" class="w-3.5 h-3.5 rounded-full bg-amber-500 border border-white/40"></button>
+        <button type="button" onclick="setQuickStrokeColor('#10b981')" class="w-3.5 h-3.5 rounded-full bg-emerald-500 border border-white/40"></button>
+        <button type="button" onclick="setQuickStrokeColor('#06b6d4')" class="w-3.5 h-3.5 rounded-full bg-cyan-500 border border-white/40"></button>
+        <button type="button" onclick="setQuickStrokeColor('#4f46e5')" class="w-3.5 h-3.5 rounded-full bg-indigo-600 border border-white/40"></button>
+        <button type="button" onclick="setQuickStrokeColor('#ec4899')" class="w-3.5 h-3.5 rounded-full bg-pink-500 border border-white/40"></button>
+        <button type="button" onclick="setQuickStrokeColor('#0f172a')" class="w-3.5 h-3.5 rounded-full bg-slate-900 border border-white/40"></button>
+      </div>
+      <button type="button" onclick="activateEyeDropper()" class="text-xs px-1.5 py-0.5 rounded hover:bg-slate-700 text-cyan-300" title="Ống hút màu (Eyedropper)">
+        <i class="fa-solid fa-eye-dropper"></i>
+      </button>
+    </div>
+
+    <!-- Stroke Width (1px - 60px) -->
+    <div class="flex items-center gap-1.5 bg-slate-800/90 px-2 py-1 rounded-lg border border-slate-700 shrink-0" title="Độ dày nét vẽ (1px - 60px)">
+      <span class="text-[11px] text-slate-300">Cỡ:</span>
+      <input id="draw-stroke-width" type="range" min="1" max="60" value="4" oninput="updateDrawConfig('strokeWidth', this.value)" class="w-16 accent-indigo-400 cursor-pointer" />
+      <span id="draw-width-label" class="text-[11px] font-mono w-7 text-right">4px</span>
+    </div>
+
+    <!-- Stroke Opacity (5% - 100%) -->
+    <div class="flex items-center gap-1.5 bg-slate-800/90 px-2 py-1 rounded-lg border border-slate-700 shrink-0" title="Độ trong suốt nét vẽ (5% - 100%)">
+      <span class="text-[11px] text-slate-300">Độ rõ:</span>
+      <input id="draw-stroke-opacity" type="range" min="5" max="100" value="100" oninput="updateDrawConfig('opacity', this.value)" class="w-16 accent-cyan-400 cursor-pointer" />
+      <span id="draw-opacity-label" class="text-[11px] font-mono w-8 text-right">100%</span>
+    </div>
+
+    <!-- Stroke Dash Style -->
+    <select id="draw-stroke-style" onchange="updateDrawConfig('strokeStyle', this.value)" class="h-7 text-xs bg-slate-800 border border-slate-700 rounded px-1.5 text-slate-100 outline-none shrink-0" title="Kiểu nét vẽ">
+      <option value="solid">─── Liền</option>
+      <option value="dashed">- - - Đứt</option>
+      <option value="dotted">···· Chấm</option>
+    </select>
+
+    <!-- ★ 3 LAYER MODES SWITCHER FOR ACTIVE DRAWING ZONE ★ -->
+    <div class="flex items-center gap-1 bg-indigo-950/90 px-2 py-0.5 rounded-lg border border-indigo-400/40 shrink-0">
+      <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-300">Chế độ Lớp:</span>
+      <select id="active-zone-layer-select" onchange="changeActiveZoneLayerMode(this.value)" class="h-6 text-xs bg-indigo-900 text-white font-semibold rounded px-1.5 outline-none border border-indigo-400/30" title="Chuyển đổi 3 Lớp tương tác với Văn bản">
+        <option value="overlay">Lớp 1: Trên văn bản (Overlay)</option>
+        <option value="underlay">Lớp 2: Dưới văn bản (Behind Text)</option>
+        <option value="inline-break">Lớp 3A: Ngang văn bản (Ngắt dòng)</option>
+        <option value="inline-wrap-left">Lớp 3B: Bao quanh chữ (Trái)</option>
+        <option value="inline-wrap-right">Lớp 3C: Bao quanh chữ (Phải)</option>
+      </select>
+
+      <button id="btn-zone-clickthrough" type="button" onclick="toggleActiveZoneClickThrough()" class="px-1.5 py-0.5 rounded text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600" title="Bật/Tắt Click-through (Xuyên chuột qua khung vẽ Lớp trên để sửa chữ bên dưới)">
+        <i class="fa-solid fa-arrow-pointer mr-0.5"></i>Xuyên chữ
+      </button>
+    </div>
+
+    <!-- Zone Undo / Redo / Clear / Export PNG / Delete -->
+    <div class="flex items-center gap-1 shrink-0">
+      <button type="button" onclick="undoActiveZone()" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs" title="Undo nét vẽ trong khung vẽ này">
+        <i class="fa-solid fa-rotate-left"></i>
+      </button>
+      <button type="button" onclick="redoActiveZone()" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs" title="Redo nét vẽ trong khung vẽ này">
+        <i class="fa-solid fa-rotate-right"></i>
+      </button>
+      <button type="button" onclick="clearActiveZone()" class="px-2 py-1 rounded bg-slate-800 hover:bg-rose-900/80 text-rose-300 text-xs" title="Xóa sạch nét vẽ trong khung này">
+        <i class="fa-solid fa-broom"></i>
+      </button>
+      <button type="button" onclick="exportActiveZonePNG()" class="px-2 py-1 rounded bg-emerald-600/80 hover:bg-emerald-600 text-white text-xs font-semibold flex items-center gap-1" title="Xuất riêng khung vẽ này thành ảnh PNG trong suốt">
+        <i class="fa-solid fa-image"></i><span class="hidden xl:inline">PNG</span>
+      </button>
+      <button type="button" onclick="deleteActiveZone()" class="px-2 py-1 rounded bg-rose-600/80 hover:bg-rose-600 text-white text-xs" title="Xóa khung vẽ này khỏi trang">
+        <i class="fa-solid fa-trash-can"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== MAIN WORKSPACE AREA (SIDEBAR + STAGE + INSPECTOR) ==================== -->
+  <div class="flex-1 flex min-h-0 relative overflow-hidden">
+
+    <!-- LEFT SIDEBAR: OUTLINE, DRAWING LAYERS & MY DOCS -->
+    <aside id="left-sidebar" class="w-64 glass-bar border-r flex flex-col shrink-0 z-20 transition-all duration-200">
+      <!-- Sidebar Tabs -->
+      <div class="grid grid-cols-3 border-b border-slate-200 dark:border-slate-700 p-1 gap-1 bg-slate-100/60 dark:bg-slate-800/50">
+        <button id="tab-btn-outline" type="button" onclick="switchSidebarTab('outline')" class="py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-700 shadow-sm text-indigo-600 dark:text-indigo-300">
+          <i class="fa-solid fa-list-staggered mr-1"></i>Mục lục
+        </button>
+        <button id="tab-btn-layers" type="button" onclick="switchSidebarTab('layers')" class="py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:bg-white/50">
+          <i class="fa-solid fa-layer-group mr-1"></i>Lớp vẽ
+        </button>
+        <button id="tab-btn-files" type="button" onclick="switchSidebarTab('files')" class="py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:bg-white/50">
+          <i class="fa-solid fa-folder mr-1"></i>Tệp
+        </button>
+      </div>
+
+      <!-- Tab 1: Document Outline -->
+      <div id="sidebar-tab-outline" class="flex-1 overflow-y-auto p-3 space-y-1">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Cấu trúc Tiêu đề</span>
+          <button type="button" onclick="refreshDocumentOutline()" class="text-xs text-indigo-500 hover:underline">Làm mới</button>
+        </div>
+        <div id="outline-list" class="space-y-1 text-xs"></div>
+      </div>
+
+      <!-- Tab 2: Multi-Layer Drawing Zones Manager -->
+      <div id="sidebar-tab-layers" class="hidden flex-1 overflow-y-auto p-3 space-y-2">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Danh sách Không gian vẽ</span>
+          <button type="button" onclick="startCreateZoneMode()" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+            + Tạo mới
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-2">
+          Nhấp chọn bất kỳ khung vẽ nào (kể cả <strong>Lớp dưới chữ</strong>) để vẽ tiếp, đổi chế độ Lớp hoặc chỉnh độ trong suốt:
+        </p>
+        <div id="drawing-layers-list" class="space-y-2"></div>
+      </div>
+
+      <!-- Tab 3: Saved Documents Quick List -->
+      <div id="sidebar-tab-files" class="hidden flex-1 overflow-y-auto p-3 space-y-2">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Tài liệu đã lưu</span>
+          <button type="button" onclick="createNewDocument()" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+            + Tệp mới
+          </button>
+        </div>
+        <div id="sidebar-files-list" class="space-y-1.5"></div>
+      </div>
+
+      <!-- Sidebar Footer: Quick Guide Box -->
+      <div class="p-3 border-t border-slate-200 dark:border-slate-700 bg-indigo-500/5 text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
+        <div class="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Mẹo Không Gian Vẽ
+        </div>
+        <div>• <strong>Ctrl/Alt + Lăn chuột</strong>: Zoom trong khung vẽ (0.25x–5.0x).</div>
+        <div>• <strong>Giữ Space + Kéo</strong>: Trượt vùng nhìn (Pan) vô cực.</div>
+        <div>• <strong>Kéo viền / 8 góc</strong>: Di chuyển & đổi cỡ khung vẽ.</div>
+      </div>
+    </aside>
+
+    <!-- CENTER DOCUMENT WORKSPACE WITH RULERS -->
+    <main class="flex-1 flex flex-col min-w-0 min-h-0 relative">
+      <!-- Top Horizontal Ruler -->
+      <div id="ruler-top-bar" class="h-6 glass-bar border-b flex items-center justify-center overflow-hidden shrink-0">
+        <div class="w-[794px] ruler-h relative flex items-end justify-between px-4 text-[9px] font-mono text-slate-400 select-none">
+          <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20 cm</span>
+        </div>
+      </div>
+
+      <!-- Scrollable Viewport with Left Vertical Ruler + A4 Document Page -->
+      <div id="workspace-scroll" class="flex-1 overflow-auto flex relative py-8 px-4 sm:px-10 justify-center">
+        <!-- Left Vertical Ruler -->
+        <div id="ruler-left-bar" class="hidden lg:flex flex-col justify-between items-center py-6 mr-3 ruler-v rounded border border-slate-200/70 dark:border-slate-700/70 text-[9px] font-mono text-slate-400 select-none shrink-0 h-[1123px]">
+          <span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span><span>12</span><span>14</span><span>16</span><span>18</span><span>20</span><span>22</span><span>24</span><span>26</span><span>28 cm</span>
+        </div>
+
+        <!-- Zoomable Page Stage Wrapper -->
+        <div id="page-stage-wrapper">
+          <!-- THE A4 DOCUMENT PAGE -->
+          <div id="doc-page">
+            <!-- Marquee Box when dragging to create a new Drawing Zone -->
+            <div id="creation-marquee">
+              <div id="creation-marquee-label">0 × 0 px</div>
+            </div>
+
+            <!-- LAYER 2: BEHIND TEXT (UNDERLAY LAYER, z-index: 10) -->
+            <div id="underlay-layer"></div>
+
+            <!-- RICH-TEXT CONTENT LAYER (z-index: 20, transparent paragraph backgrounds) -->
+            <div
+              id="editor-content"
+              contenteditable="true"
+              spellcheck="false"
+              oninput="handleEditorInput()"
+              onclick="handleEditorClick(event)"
+            ></div>
+
+            <!-- LAYER 1: IN FRONT OF TEXT (OVERLAY LAYER, z-index: 30) -->
+            <div id="overlay-layer"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ==================== BOTTOM STATUS BAR ==================== -->
+  <footer id="status-bar" class="glass-bar border-t px-4 py-1 flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 z-30 shrink-0">
+    <div class="flex items-center gap-4 flex-wrap">
+      <span><i class="fa-regular fa-file-lines mr-1 text-indigo-500"></i>Trang: <strong id="stat-pages">1</strong></span>
+      <span>Từ: <strong id="stat-words">0</strong></span>
+      <span>Ký tự: <strong id="stat-chars">0</strong></span>
+      <span class="text-indigo-600 dark:text-indigo-400 font-semibold">
+        <i class="fa-solid fa-layer-group mr-1"></i>Khung vẽ đa lớp: <strong id="stat-zones">0</strong>
+      </span>
+      <span id="stat-active-zone-info" class="hidden sm:inline font-mono text-xs text-emerald-600 dark:text-emerald-400">
+        Đang chọn: Zone #1 (Zoom 100%)
+      </span>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <span id="storage-engine-indicator" class="font-mono text-[10px] px-2 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800">
+        Engine: IndexedDB + LocalStorage
+      </span>
+      <span id="last-saved-time" class="hidden sm:inline">Vừa lưu tự động</span>
+    </div>
+  </footer>
+
+  <!-- Hidden File Input for .dcanvas Import & Local Image Upload -->
+  <input id="input-import-dcanvas" type="file" accept=".dcanvas,.json" onchange="handleImportDCanvasFile(event)" class="hidden" />
+  <input id="input-upload-image" type="file" accept="image/*" onchange="handleLocalImageUpload(event)" class="hidden" />
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- 1. DOCUMENT DASHBOARD MODAL -->
+  <div id="modal-doc-dashboard" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl accent-gradient-bg text-white flex items-center justify-center">
+            <i class="fa-solid fa-folder-tree"></i>
+          </div>
+          <div>
+            <h3 class="font-display font-bold text-base">Quản lý Tài liệu Đa Lớp (Document Studio)</h3>
+            <p class="text-xs text-slate-500">Tạo mới, chuyển đổi, nhân bản hoặc nhập/xuất dự án .dcanvas</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeModal('modal-doc-dashboard')" class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-5">
+        <!-- Quick Templates -->
+        <div>
+          <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">Khởi tạo nhanh từ Mẫu (Templates)</div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button type="button" onclick="createNewDocument('blank')" class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-500 text-left transition group bg-slate-50/50 dark:bg-slate-800/50">
+              <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center mb-2 group-hover:scale-110 transition">
+                <i class="fa-solid fa-plus"></i>
+              </div>
+              <div class="font-semibold text-sm">Tài liệu Trắng + 1 Khung vẽ</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">Trang A4 sạch kèm sẵn 1 không gian vẽ tự do</div>
+            </button>
+
+            <button type="button" onclick="createNewDocument('architecture')" class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-purple-500 text-left transition group bg-slate-50/50 dark:bg-slate-800/50">
+              <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center mb-2 group-hover:scale-110 transition">
+                <i class="fa-solid fa-diagram-project"></i>
+              </div>
+              <div class="font-semibold text-sm">Bản mẫu Đa Lớp (3 Layer Demo)</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">Đủ 3 lớp: Watermark chìm, Highlight đè chữ & Sơ đồ bao chữ</div>
+            </button>
+
+            <button type="button" onclick="createNewDocument('study')" class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-500 text-left transition group bg-slate-50/50 dark:bg-slate-800/50">
+              <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-2 group-hover:scale-110 transition">
+                <i class="fa-solid fa-graduation-cap"></i>
+              </div>
+              <div class="font-semibold text-sm">Sổ tay Thuật toán & Toán học</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">Ghi chú bài giảng kết hợp bảng nháp đồ thị trực quan</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Saved Documents List -->
+        <div>
+          <div class="flex items-center justify-between mb-2.5">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Danh sách Tài liệu đã lưu</span>
+            <button type="button" onclick="triggerImportDCanvas()" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+              <i class="fa-solid fa-file-import mr-1"></i>Mở file .dcanvas từ máy
+            </button>
+          </div>
+          <div id="dashboard-docs-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. VERSION HISTORY MODAL -->
+  <div id="modal-version-history" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-xl w-full max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div>
+          <h3 class="font-display font-bold text-base"><i class="fa-solid fa-clock-rotate-left text-purple-500 mr-2"></i>Lịch sử Phiên bản (Snapshots)</h3>
+          <p class="text-xs text-slate-500">Lưu trữ toàn bộ văn bản và các lớp vẽ tại từng thời điểm</p>
+        </div>
+        <button type="button" onclick="closeModal('modal-version-history')" class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="p-5 overflow-y-auto space-y-3 flex-1">
+        <div class="flex gap-2">
+          <input id="snapshot-label-input" type="text" placeholder="Nhập ghi chú phiên bản (VD: Bản thảo v1.2)..." class="flex-1 text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none" />
+          <button type="button" onclick="createManualSnapshot()" class="px-3.5 py-2 rounded-lg text-xs font-semibold text-white accent-gradient-bg">
+            + Lưu Snapshot
+          </button>
+        </div>
+        <div id="version-history-list" class="space-y-2 mt-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. INTERACTIVE TABLE BUILDER MODAL -->
+  <div id="modal-table-builder" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-display font-bold text-base"><i class="fa-solid fa-table text-emerald-500 mr-2"></i>Trình Tạo & Chỉnh Sửa Bảng</h3>
+        <button type="button" onclick="closeModal('modal-table-builder')" class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <label class="space-y-1">
+          <span class="font-semibold">Số hàng (Rows)</span>
+          <input id="table-rows-input" type="number" min="1" max="20" value="4" class="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+        </label>
+        <label class="space-y-1">
+          <span class="font-semibold">Số cột (Columns)</span>
+          <input id="table-cols-input" type="number" min="1" max="10" value="4" class="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+        </label>
+      </div>
+      <div class="flex items-center justify-between text-xs">
+        <label class="flex items-center gap-2">
+          <input id="table-header-checkbox" type="checkbox" checked class="rounded text-indigo-600" />
+          <span>Có dòng tiêu đề (Header Row)</span>
+        </label>
+        <label class="flex items-center gap-2">
+          <span>Màu tiêu đề:</span>
+          <input id="table-header-color" type="color" value="#e0e7ff" class="w-6 h-6 rounded border-0 cursor-pointer" />
+        </label>
+      </div>
+      <div class="border-t border-slate-200 dark:border-slate-800 pt-3">
+        <div class="text-[11px] font-bold uppercase text-slate-400 mb-2">Thao tác nhanh trên bảng đang đặt con trỏ</div>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <button type="button" onclick="modifyActiveTable('addRow')" class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">+ Thêm 1 hàng</button>
+          <button type="button" onclick="modifyActiveTable('addCol')" class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">+ Thêm 1 cột</button>
+          <button type="button" onclick="modifyActiveTable('delRow')" class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600">- Xóa hàng cuối</button>
+          <button type="button" onclick="modifyActiveTable('delCol')" class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600">- Xóa cột cuối</button>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="closeModal('modal-table-builder')" class="px-4 py-2 rounded-lg text-xs border border-slate-200 dark:border-slate-700">Đóng</button>
+        <button type="button" onclick="insertCustomTable()" class="px-4 py-2 rounded-lg text-xs font-semibold text-white accent-gradient-bg">Chèn Bảng Mới</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. INSERT IMAGE MODAL -->
+  <div id="modal-insert-image" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-display font-bold text-base"><i class="fa-regular fa-image text-blue-500 mr-2"></i>Chèn Hình ảnh vào Tài liệu</h3>
+        <button type="button" onclick="closeModal('modal-insert-image')" class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <button type="button" onclick="document.getElementById('input-upload-image').click()" class="w-full py-4 border-2 border-dashed border-indigo-400/60 rounded-xl hover:bg-indigo-50/40 dark:hover:bg-slate-800 flex flex-col items-center justify-center gap-1 text-indigo-600 dark:text-indigo-400 font-semibold">
+          <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+          <span>Tải ảnh lên từ máy tính của bạn</span>
+        </button>
+        <div class="text-center text-slate-400">hoặc dán đường dẫn URL hình ảnh</div>
+        <input id="image-url-input" type="url" placeholder="https://example.com/diagram.png" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none" />
+      </div>
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="closeModal('modal-insert-image')" class="px-4 py-2 rounded-lg text-xs border border-slate-200 dark:border-slate-700">Hủy</button>
+        <button type="button" onclick="insertImageFromUrl()" class="px-4 py-2 rounded-lg text-xs font-semibold text-white accent-gradient-bg">Chèn từ URL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. INSERT LINK MODAL -->
+  <div id="modal-insert-link" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-display font-bold text-base"><i class="fa-solid fa-link text-indigo-500 mr-2"></i>Chèn Liên kết (Hyperlink)</h3>
+        <button type="button" onclick="closeModal('modal-insert-link')" class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <input id="link-text-input" type="text" placeholder="Văn bản hiển thị (VD: Tài liệu đặc tả API)" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none" />
+        <input id="link-url-input" type="url" placeholder="https://github.com/..." class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none" />
+      </div>
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="closeModal('modal-insert-link')" class="px-4 py-2 rounded-lg text-xs border border-slate-200 dark:border-slate-700">Hủy</button>
+        <button type="button" onclick="confirmInsertLink()" class="px-4 py-2 rounded-lg text-xs font-semibold text-white accent-gradient-bg">Chèn Liên kết</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. SPECIAL CHARACTERS MODAL -->
+  <div id="modal-special-chars" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-display font-bold text-base">Ký tự Đặc biệt & Toán học</h3>
+        <button type="button" onclick="closeModal('modal-special-chars')" class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="special-chars-grid" class="grid grid-cols-8 gap-1.5 text-base font-mono"></div>
+    </div>
+  </div>
+
+  <!-- 7. FIND & REPLACE MODAL -->
+  <div id="modal-find-replace" class="fixed top-20 right-6 z-50 hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl w-80 p-4 shadow-2xl space-y-3">
+    <div class="flex items-center justify-between">
+      <span class="font-display font-bold text-xs uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+        <i class="fa-solid fa-magnifying-glass mr-1"></i>Tìm kiếm & Thay thế
+      </span>
+      <button type="button" onclick="closeModal('modal-find-replace')" class="w-6 h-6 rounded hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-xs">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="space-y-2 text-xs">
+      <input id="find-query-input" type="text" placeholder="Từ khóa cần tìm..." oninput="runFindCount()" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none" />
+      <input id="replace-query-input" type="text" placeholder="Thay thế bằng..." class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none" />
+      <div class="flex items-center justify-between text-[11px] text-slate-500">
+        <span id="find-match-count">0 kết quả</span>
+        <div class="flex gap-1.5">
+          <button type="button" onclick="replaceNextMatch()" class="px-2.5 py-1 rounded bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 font-semibold">Thay 1</button>
+          <button type="button" onclick="replaceAllMatches()" class="px-2.5 py-1 rounded text-white accent-gradient-bg font-semibold">Thay tất cả</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. CANVAS TEXT STAMP MODAL (For inserting text directly inside a Drawing Zone) -->
+  <div id="modal-canvas-text" class="fixed inset-0 bg-slate-950/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-3">
+      <div class="flex items-center justify-between">
+        <h3 class="font-display font-bold text-sm"><i class="fa-solid fa-font text-cyan-500 mr-1.5"></i>Ghi chú trực tiếp vào Khung vẽ</h3>
+        <button type="button" onclick="closeModal('modal-canvas-text')" class="w-7 h-7 rounded hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <input id="canvas-text-value" type="text" placeholder="Nhập nội dung nhãn trên sơ đồ..." class="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none" />
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="closeModal('modal-canvas-text')" class="px-3 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-700">Hủy</button>
+        <button type="button" onclick="confirmCanvasTextStamp()" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white accent-gradient-bg">Chèn vào Canvas</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. ACCOUNT & AUTHENTICATION MODAL -->
+  <div id="modal-account" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-display font-bold text-base"><i class="fa-solid fa-user-shield text-indigo-500 mr-2"></i>Tài khoản & Đồng bộ Cá nhân</h3>
+        <button type="button" onclick="closeModal('modal-account')" class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center gap-3">
+        <div id="modal-user-avatar" class="w-11 h-11 rounded-full accent-gradient-bg text-white font-bold flex items-center justify-center text-base">MN</div>
+        <div class="min-w-0 flex-1">
+          <div id="modal-user-name" class="font-bold text-sm truncate">Minh Ngọc</div>
+          <div id="modal-user-email" class="text-xs text-slate-500 truncate">minhngoc@docucanvas.local</div>
+          <div id="modal-auth-mode-badge" class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">Chế độ: Tài khoản Local (Offline-First)</div>
+        </div>
+      </div>
+
+      <div class="space-y-2.5 text-xs">
+        <div class="font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Cập nhật hồ sơ hoặc Đăng nhập Cloud</div>
+        <input id="auth-name-input" type="text" value="Minh Ngọc" placeholder="Tên hiển thị của bạn" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none" />
+        <input id="auth-email-input" type="email" value="minhngoc@docucanvas.local" placeholder="Email đăng nhập" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none" />
+        <input id="auth-pass-input" type="password" placeholder="Mật khẩu (dùng khi kết nối Firebase Auth)" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none" />
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 pt-1 text-xs">
+        <button type="button" onclick="saveLocalProfile()" class="px-3 py-2 rounded-lg font-semibold text-white accent-gradient-bg">
+          Lưu Hồ sơ / Đăng nhập
+        </button>
+        <button type="button" onclick="signInWithFirebaseGoogle()" class="px-3 py-2 rounded-lg font-semibold border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center gap-1.5">
+          <i class="fa-brands fa-google text-rose-500"></i> Google Sign-In
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. CLOUD PERSISTENCE SETUP MODAL (DUAL-STORAGE ENGINE: INDEXEDDB + FIREBASE) -->
+  <div id="modal-cloud-setup" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[88vh] overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="font-display font-bold text-base"><i class="fa-solid fa-cloud-bolt text-cyan-500 mr-2"></i>Cấu hình Dual-Storage Engine (IndexedDB & Firebase Cloud)</h3>
+          <p class="text-xs text-slate-500">Mặc định lưu tự động 100% qua IndexedDB + LocalStorage. Dán Firebase Config để đồng bộ lên Cloud Firestore thực tế.</p>
+        </div>
+        <button type="button" onclick="closeModal('modal-cloud-setup')" class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 flex items-center justify-between">
+          <span><i class="fa-solid fa-database mr-1.5"></i><strong>Local Engine (IndexedDB + LocalStorage):</strong> Đang hoạt động ổn định</span>
+          <span class="px-2 py-0.5 rounded bg-emerald-500 text-white text-[10px] font-bold">ACTIVE</span>
+        </div>
+
+        <label class="block space-y-1">
+          <span class="font-semibold">Dán JSON `firebaseConfig` của bạn (từ Firebase Console &rarr; Project Settings):</span>
+          <textarea
+            id="firebase-config-textarea"
+            rows="6"
+            placeholder='{"apiKey": "AIzaSy...", "authDomain": "your-app.firebaseapp.com", "projectId": "your-app", "storageBucket": "your-app.appspot.com", "messagingSenderId": "123456", "appId": "1:123456:web:abcdef"}'
+            class="w-full font-mono text-[11px] p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none"
+          ></textarea>
+        </label>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-2">
+          <button type="button" onclick="openDeployGuideModal()" class="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">
+            <i class="fa-solid fa-book-open mr-1"></i>Xem hướng dẫn lấy Firebase Config từng bước
+          </button>
+          <div class="flex gap-2">
+            <button type="button" onclick="disconnectFirebaseCloud()" class="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">
+              Dùng Local Offline
+            </button>
+            <button type="button" onclick="connectFirebaseCloud()" class="px-4 py-2 rounded-lg font-semibold text-white accent-gradient-bg">
+              <i class="fa-solid fa-plug mr-1"></i>Kết nối & Đồng bộ Cloud
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11. STEP-BY-STEP DEPLOYMENT & FIREBASE GUIDE MODAL (PHẦN 4) -->
+  <div id="modal-deploy-guide" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-3xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div>
+          <h3 class="font-display font-bold text-base"><i class="fa-solid fa-rocket text-indigo-500 mr-2"></i>Hướng dẫn Triển khai (Deployment) & Lưu trữ Đám mây Miễn phí 100%</h3>
+          <p class="text-xs text-slate-500">Hướng dẫn từng bước chạy Local, đưa lên GitHub Pages / Vercel / Netlify và kết nối Firebase Spark miễn phí</p>
+        </div>
+        <button type="button" onclick="closeModal('modal-deploy-guide')" class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-5 text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+        <!-- Step 1 -->
+        <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 space-y-2">
+          <div class="font-display font-bold text-sm text-indigo-600 dark:text-indigo-400">
+            1. Cách chạy thử ngay trên máy tính cá nhân (Zero-Build)
+          </div>
+          <p><strong>Bước 1:</strong> Tải hoặc lưu toàn bộ mã nguồn ứng dụng thành một tệp duy nhất tên là <code>index.html</code> trên máy tính của bạn.</p>
+          <p><strong>Bước 2:</strong> Nhấp đúp chuột trực tiếp vào tệp <code>index.html</code> để mở bằng Chrome / Edge / Safari / Firefox, hoặc mở thư mục trong <strong>VS Code</strong> và nhấn <strong>Go Live (Live Server)</strong> ở góc dưới bên phải.</p>
+          <p><strong>Bước 3:</strong> Toàn bộ chức năng soạn thảo văn bản, tạo Không gian vẽ 3 lớp, Pan/Zoom bên trong khung vẽ, lưu tự động qua <strong>IndexedDB + LocalStorage</strong> và xuất file <code>.pdf</code>, <code>.doc</code>, <code>.dcanvas</code> đều hoạt động 100% ngay lập tức mà không cần cài đặt Node.js hay chạy lệnh build.</p>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 space-y-2">
+          <div class="font-display font-bold text-sm text-purple-600 dark:text-purple-400">
+            2. Cách đẩy code lên GitHub và triển khai miễn phí lên GitHub Pages / Vercel / Netlify
+          </div>
+          <p><strong>Cách A — GitHub Pages (Miễn phí vĩnh viễn):</strong></p>
+          <pre class="bg-slate-900 text-slate-100 p-3 rounded-lg font-mono text-[11px] overflow-x-auto">git init
+git add index.html
+git commit -m "Deploy DocuCanvas Studio SPA"
+git branch -M main
+git remote add origin https://github.com/&lt;ten-tai-khoan&gt;/docucanvas-studio.git
+git push -u origin main</pre>
+          <p>• Sau khi push, vào kho lưu trữ trên GitHub &rarr; <strong>Settings</strong> &rarr; <strong>Pages</strong> &rarr; tại mục <strong>Branch</strong> chọn <code>main</code> / <code>/(root)</code> &rarr; nhấn <strong>Save</strong>. Sau 1 phút, trang web của bạn sẽ có địa chỉ công khai: <code>https://&lt;ten-tai-khoan&gt;.github.io/docucanvas-studio/</code>.</p>
+          <p><strong>Cách B — Vercel hoặc Netlify (Kéo-thả trong 15 giây):</strong></p>
+          <p>• Truy cập <code>https://vercel.com</code> (Import GitHub Repo vừa tạo và nhấn <strong>Deploy</strong>) hoặc vào <code>https://app.netlify.com/drop</code> và kéo-thả trực tiếp thư mục chứa <code>index.html</code> vào trình duyệt để nhận ngay tên miền HTTPS miễn phí.</p>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 space-y-2">
+          <div class="font-display font-bold text-sm text-cyan-600 dark:text-cyan-400">
+            3. Cách kết nối Cơ sở dữ liệu Đám mây miễn phí (Firebase Auth + Cloud Firestore Gói Spark)
+          </div>
+          <p><strong>Bước 1:</strong> Truy cập <code>https://console.firebase.google.com/</code> &rarr; nhấn <strong>Create a project</strong> (chọn gói <strong>Spark Plan — Miễn phí $0/tháng</strong>).</p>
+          <p><strong>Bước 2:</strong> Ở menu bên trái, chọn <strong>Build &rarr; Authentication</strong> &rarr; nhấn <strong>Get started</strong> &rarr; bật <strong>Email/Password</strong> và <strong>Google Sign-In</strong> (thêm tên miền GitHub Pages / Vercel của bạn vào mục <em>Authorized domains</em>).</p>
+          <p><strong>Bước 3:</strong> Chọn <strong>Build &rarr; Firestore Database</strong> &rarr; nhấn <strong>Create database</strong> &rarr; chọn <em>Start in test mode</em> (hoặc cấu hình Rules cho phép <code>request.auth != null</code>).</p>
+          <p><strong>Bước 4:</strong> Vào biểu tượng Bánh răng <strong>Project Settings</strong> &rarr; cuộn xuống mục <strong>Your apps</strong> &rarr; chọn biểu tượng Web <code>&lt;/&gt;</code> &rarr; đăng ký tên app và sao chép đối tượng JSON <code>firebaseConfig</code>.</p>
+          <p><strong>Bước 5:</strong> Quay lại giao diện <strong>DocuCanvas Studio</strong> &rarr; nhấn nút <strong>Cloud DB</strong> trên thanh Header &rarr; dán đoạn <code>firebaseConfig</code> vào ô cấu hình và nhấn <strong>Kết nối & Đồng bộ Cloud</strong>. Hệ thống sẽ lập tức đồng bộ toàn bộ tài liệu và các lớp vẽ lên Cloud Firestore theo thời gian thực!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== APPLICATION CORE JAVASCRIPT ENGINE ==================== -->
+  <script>
+    /* ============================================================================
+     * DOCUCANVAS STUDIO — CORE ENGINE (RICH-TEXT + 3-LAYER INTERACTIVE CANVAS)
+     * ============================================================================ */
+
+    // --- 1. Safe Storage Wrapper (IndexedDB + LocalStorage + In-Memory Fallback) ---
+    const memoryFallbackStore = {};
+    const DB_NAME = 'DocuCanvasStudioDB';
+    const DB_VERSION = 1;
+    let idbInstance = null;
+
+    function safeLocalGet(key, fallback = null) {
+      try {
+        const val = window.localStorage.getItem(key);
+        return val !== null ? JSON.parse(val) : (memoryFallbackStore[key] || fallback);
+      } catch (err) {
+        return memoryFallbackStore[key] || fallback;
+      }
+    }
+
+    function safeLocalSet(key, value) {
+      memoryFallbackStore[key] = value;
+      try {
+        window.localStorage.setItem(key, JSON.stringify(value));
+      } catch (err) {
+        // Fallback already stored in memoryFallbackStore
+      }
+    }
+
+    function initIndexedDB() {
+      return new Promise((resolve) => {
+        try {
+          if (!window.indexedDB) {
+            resolve(null);
+            return;
+          }
+          const req = window.indexedDB.open(DB_NAME, DB_VERSION);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('documents')) {
+              db.createObjectStore('documents', { keyPath: 'id' });
+            }
+          };
+          req.onsuccess = (e) => {
+            idbInstance = e.target.result;
+            resolve(idbInstance);
+          };
+          req.onerror = () => resolve(null);
+        } catch (err) {
+          resolve(null);
+        }
+      });
+    }
+
+    function saveDocToIDB(docRecord) {
+      return new Promise((resolve) => {
+        if (!idbInstance) {
+          resolve(false);
+          return;
+        }
+        try {
+          const tx = idbInstance.transaction(['documents'], 'readwrite');
+          const store = tx.objectStore('documents');
+          store.put(docRecord);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+        } catch (err) {
+          resolve(false);
+        }
+      });
+    }
+
+    // --- 2. Global Application State ---
+    const appState = {
+      currentDocId: 'doc_default_01',
+      documents: {},
+      activeZoneId: null,
+      createZoneMode: false,
+      cleanZoneBorders: false,
+      pageZoom: 1.0,
+      pageOrientation: 'portrait',
+      pageMargin: '64px',
+      pageBgColor: '#ffffff',
+      userProfile: {
+        name: 'Minh Ngọc',
+        email: 'minhngoc@docucanvas.local',
+        mode: 'local'
+      },
+      firebaseConnected: false,
+      firestoreDb: null,
+      firebaseAuth: null,
+      drawConfig: {
+        tool: 'pen',
+        shapeMode: 'stroke',
+        strokeColor: '#4f46e5',
+        fillColor: '#38bdf8',
+        strokeWidth: 4,
+        opacity: 1.0,
+        strokeStyle: 'solid'
+      },
+      pendingTextStamp: null
+    };
+
+    // Runtime map of Drawing Zone objects on the current document
+    // zoneId -> { id, name, x, y, width, height, layerMode, clickThrough, visible, locked, zoneOpacity, bgColor, viewport: {scale, offsetX, offsetY}, commands: [], redoStack: [] }
+    let zonesMap = {};
+    let zoneCounter = 1;
+    let autoSaveTimer = null;
+
+    // --- 3. Toast Notification Helper (Replaces blocked alert/confirm) ---
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      const colorMap = {
+        info: 'bg-slate-900 text-white border-indigo-500',
+        success: 'bg-emerald-950 text-emerald-100 border-emerald-500',
+        warn: 'bg-amber-950 text-amber-100 border-amber-500'
+      };
+      toast.className = `pointer-events-auto px-3.5 py-2 rounded-xl border-l-4 shadow-xl text-xs font-medium flex items-center gap-2 transition-all duration-300 ${colorMap[type] || colorMap.info}`;
+      toast.innerHTML = `<i class="fa-solid fa-circle-info text-indigo-400"></i><span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(8px)';
+        setTimeout(() => toast.remove(), 280);
+      }, 3200);
+    }
+
+    // --- 4. Modal & Top Dropdown Helpers ---
+    function openModal(id) {
+      closeAllTopDropdowns();
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.remove('hidden');
+        el.classList.add('flex');
+      }
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.add('hidden');
+        el.classList.remove('flex');
+      }
+    }
+
+    function toggleTopDropdown(id) {
+      const target = document.getElementById(id);
+      const isHidden = target ? target.classList.contains('hidden') : true;
+      closeAllTopDropdowns();
+      if (target && isHidden) {
+        target.classList.remove('hidden');
+      }
+    }
+
+    function closeAllTopDropdowns() {
+      document.querySelectorAll('.top-dropdown').forEach((el) => el.classList.add('hidden'));
+    }
+
+    // --- 5. Theme & UI Controls ---
+    function toggleDarkMode() {
+      const htmlEl = document.documentElement;
+      const isDark = htmlEl.classList.toggle('dark');
+      const icon = document.getElementById('dark-mode-icon');
+      if (icon) {
+        icon.className = isDark ? 'fa-solid fa-sun text-amber-400' : 'fa-solid fa-moon text-slate-600';
+      }
+      safeLocalSet('docucanvas_dark', isDark);
+    }
+
+    function setThemeAccent(themeName) {
+      document.body.setAttribute('data-theme', themeName);
+      safeLocalSet('docucanvas_theme', themeName);
+      showToast(`Đã chuyển bảng màu giao diện sang ${themeName.toUpperCase()}`);
+    }
+
+    function toggleLeftSidebar() {
+      const sb = document.getElementById('left-sidebar');
+      if (sb) sb.classList.toggle('hidden');
+    }
+
+    function toggleDrawingStudioBar() {
+      const bar = document.getElementById('drawing-studio-bar');
+      if (bar) bar.classList.toggle('hidden');
+    }
+
+    function switchSidebarTab(tabName) {
+      ['outline', 'layers', 'files'].forEach((t) => {
+        const panel = document.getElementById(`sidebar-tab-${t}`);
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (panel) panel.classList.toggle('hidden', t !== tabName);
+        if (btn) {
+          if (t === tabName) {
+            btn.className = 'py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-700 shadow-sm text-indigo-600 dark:text-indigo-300';
+          } else {
+            btn.className = 'py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:bg-white/50';
+          }
+        }
+      });
+      if (tabName === 'outline') refreshDocumentOutline();
+      if (tabName === 'layers') renderLayersSidebar();
+      if (tabName === 'files') renderSidebarFilesList();
+    }
+
+    // --- 6. Page Layout & Rich-Text Formatting ---
+    function setPageZoom(val) {
+      const scale = parseFloat(val) || 1.0;
+      appState.pageZoom = scale;
+      const wrapper = document.getElementById('page-stage-wrapper');
+      if (wrapper) {
+        wrapper.style.transform = `scale(${scale})`;
+      }
+      updateStatusBar();
+    }
+
+    function setPageOrientation(mode) {
+      appState.pageOrientation = mode;
+      const root = document.documentElement;
+      if (mode === 'landscape') {
+        root.style.setProperty('--page-width', '1123px');
+        root.style.setProperty('--page-min-height', '794px');
+      } else {
+        root.style.setProperty('--page-width', '794px');
+        root.style.setProperty('--page-min-height', '1123px');
+      }
+      closeAllTopDropdowns();
+      scheduleAutoSave();
+      showToast(`Đã chuyển khổ giấy sang A4 ${mode === 'landscape' ? 'Ngang' : 'Dọc'}`);
+    }
+
+    function setPageMargins(pxVal) {
+      appState.pageMargin = pxVal;
+      document.documentElement.style.setProperty('--page-padding', pxVal);
+      closeAllTopDropdowns();
+      scheduleAutoSave();
+    }
+
+    function setPageBackgroundColor(hex) {
+      appState.pageBgColor = hex;
+      document.documentElement.style.setProperty('--page-bg', hex);
+      scheduleAutoSave();
+    }
+
+    function toggleCleanZoneBorders() {
+      appState.cleanZoneBorders = !appState.cleanZoneBorders;
+      document.querySelectorAll('.drawing-zone').forEach((el) => {
+        el.classList.toggle('zone-clean-view', appState.cleanZoneBorders);
+      });
+      closeAllTopDropdowns();
+      showToast(appState.cleanZoneBorders ? 'Đã ẩn viền nét đứt của các Khung vẽ' : 'Đã hiện viền nét đứt của các Khung vẽ');
+    }
+
+    function execEditorCmd(command, value = null) {
+      const editor = document.getElementById('editor-content');
+      if (editor) editor.focus();
+      document.execCommand(command, false, value);
+      handleEditorInput();
+      closeAllTopDropdowns();
+    }
+
+    function applyHeadingBlock(tag) {
+      execEditorCmd('formatBlock', tag);
+      refreshDocumentOutline();
+    }
+
+    function applyFontFamily(fontName) {
+      execEditorCmd('fontName', fontName);
+    }
+
+    function applyFontSizePt(ptValue) {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+        execEditorCmd('fontSize', '4');
+        return;
+      }
+      const span = document.createElement('span');
+      span.style.fontSize = ptValue;
+      const range = sel.getRangeAt(0);
+      try {
+        range.surroundContents(span);
+      } catch (err) {
+        execEditorCmd('fontSize', '4');
+      }
+      handleEditorInput();
+    }
+
+    function applyTextColor(hex) {
+      const bar = document.getElementById('text-color-bar');
+      if (bar) bar.style.backgroundColor = hex;
+      execEditorCmd('foreColor', hex);
+    }
+
+    function applyHighlightColor(hex) {
+      execEditorCmd('hiliteColor', hex);
+    }
+
+    function applyLineSpacing(val) {
+      const editor = document.getElementById('editor-content');
+      if (editor) {
+        editor.style.lineHeight = val;
+      }
+      scheduleAutoSave();
+    }
+
+    function insertChecklistBlock() {
+      const html = `
+        <div class="my-2 space-y-1.5 doc-checklist">
+          <label class="flex items-center gap-2 cursor-pointer select-text">
+            <input type="checkbox" onchange="this.nextElementSibling.classList.toggle('line-through', this.checked); this.nextElementSibling.classList.toggle('text-slate-400', this.checked);" class="w-4 h-4 rounded text-indigo-600" />
+            <span>Hạng mục công việc cần thực hiện 1</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer select-text">
+            <input type="checkbox" onchange="this.nextElementSibling.classList.toggle('line-through', this.checked); this.nextElementSibling.classList.toggle('text-slate-400', this.checked);" class="w-4 h-4 rounded text-indigo-600" />
+            <span>Hạng mục công việc cần thực hiện 2</span>
+          </label>
+        </div><p><br/></p>`;
+      execEditorCmd('insertHTML', html);
+    }
+
+    function insertCodeBlock() {
+      const html = `<pre contenteditable="true">// Khối mã nguồn (Code Block)\nfunction computeMatrixTransform(x, y, scale, offset) {\n  return { worldX: (x - offset.x) / scale, worldY: (y - offset.y) / scale };\n}</pre><p><br/></p>`;
+      execEditorCmd('insertHTML', html);
+    }
+
+    function insertBlockquote() {
+      const html = `<blockquote>"Thiết kế đa lớp kết hợp văn bản học thuật và sơ đồ trực quan ngay trên cùng một mặt phẳng tài liệu."</blockquote><p><br/></p>`;
+      execEditorCmd('insertHTML', html);
+    }
+
+    // --- 7. Interactive Table Builder, Images, Links, Special Chars, Find/Replace ---
+    function openTableModal() {
+      openModal('modal-table-builder');
+    }
+
+    function insertCustomTable() {
+      const rows = Math.max(1, Math.min(20, parseInt(document.getElementById('table-rows-input').value, 10) || 3));
+      const cols = Math.max(1, Math.min(10, parseInt(document.getElementById('table-cols-input').value, 10) || 3));
+      const hasHeader = document.getElementById('table-header-checkbox').checked;
+      const headerBg = document.getElementById('table-header-color').value || '#e0e7ff';
+
+      let html = '<table class="doc-table"><tbody>';
+      for (let r = 0; r < rows; r++) {
+        html += '<tr>';
+        for (let c = 0; c < cols; c++) {
+          if (r === 0 && hasHeader) {
+            html += `<th style="background-color:${headerBg}">Tiêu đề ${c + 1}</th>`;
+          } else {
+            html += `<td>Nội dung ${r + 1}.${c + 1}</td>`;
+          }
+        }
+        html += '</tr>';
+      }
+      html += '</tbody></table><p><br/></p>';
+      closeModal('modal-table-builder');
+      execEditorCmd('insertHTML', html);
+      showToast(`Đã chèn bảng ${rows}×${cols}`);
+    }
+
+    function modifyActiveTable(action) {
+      const editor = document.getElementById('editor-content');
+      const tables = editor ? editor.querySelectorAll('table') : [];
+      if (!tables.length) {
+        showToast('Chưa có bảng nào trong tài liệu', 'warn');
+        return;
+      }
+      const table = tables[tables.length - 1];
+      if (action === 'addRow') {
+        const cols = table.rows[0] ? table.rows[0].cells.length : 3;
+        const tr = table.insertRow(-1);
+        for (let c = 0; c < cols; c++) {
+          const td = tr.insertCell(-1);
+          td.textContent = 'Ô mới';
+        }
+      } else if (action === 'addCol') {
+        for (let r = 0; r < table.rows.length; r++) {
+          const cell = table.rows[r].insertCell(-1);
+          cell.textContent = r === 0 ? 'Cột mới' : 'Ô mới';
+        }
+      } else if (action === 'delRow' && table.rows.length > 1) {
+        table.deleteRow(-1);
+      } else if (action === 'delCol' && table.rows[0] && table.rows[0].cells.length > 1) {
+        for (let r = 0; r < table.rows.length; r++) {
+          table.rows[r].deleteCell(-1);
+        }
+      }
+      handleEditorInput();
+      showToast('Đã cập nhật cấu trúc bảng');
+    }
+
+    function openImageInsertModal() {
+      openModal('modal-insert-image');
+    }
+
+    function handleLocalImageUpload(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const html = `<p><img src="${e.target.result}" alt="${file.name}" style="max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0;" /></p>`;
+        closeModal('modal-insert-image');
+        execEditorCmd('insertHTML', html);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function insertImageFromUrl() {
+      const url = document.getElementById('image-url-input').value.trim();
+      if (!url) return;
+      const html = `<p><img src="${url}" alt="Inserted Image" style="max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0;" /></p>`;
+      closeModal('modal-insert-image');
+      execEditorCmd('insertHTML', html);
+    }
+
+    function openLinkInsertModal() {
+      openModal('modal-insert-link');
+    }
+
+    function confirmInsertLink() {
+      const text = document.getElementById('link-text-input').value.trim() || 'Liên kết tài liệu';
+      const url = document.getElementById('link-url-input').value.trim() || 'https://';
+      const html = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #4f46e5; text-decoration: underline;">${text}</a>`;
+      closeModal('modal-insert-link');
+      execEditorCmd('insertHTML', html);
+    }
+
+    function openSpecialCharsModal() {
+      const chars = [
+        'α','β','γ','δ','ε','θ','λ','μ','π','σ','φ','ω','Δ','Σ','Π','Ω',
+        '∞','≈','≠','≤','≥','±','×','÷','√','∫','∂','∇','∈','∉','⊂','⊆',
+        '⇒','⇔','→','←','↑','↓','↔','✓','✗','★','☆','♦','♠','♣','♥','©'
+      ];
+      const grid = document.getElementById('special-chars-grid');
+      if (grid) {
+        grid.innerHTML = chars.map((ch) =>
+          `<button type="button" onclick="insertSpecialChar('${ch}')" class="h-9 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-slate-800 hover:border-indigo-500 transition">${ch}</button>`
+        ).join('');
+      }
+      openModal('modal-special-chars');
+    }
+
+    function insertSpecialChar(ch) {
+      closeModal('modal-special-chars');
+      execEditorCmd('insertText', ch);
+    }
+
+    function openFindReplaceModal() {
+      openModal('modal-find-replace');
+      const input = document.getElementById('find-query-input');
+      if (input) input.focus();
+    }
+
+    function runFindCount() {
+      const query = document.getElementById('find-query-input').value;
+      const countEl = document.getElementById('find-match-count');
+      const editor = document.getElementById('editor-content');
+      if (!query || !editor) {
+        if (countEl) countEl.textContent = '0 kết quả';
+        return 0;
+      }
+      const text = editor.innerText || '';
+      const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const matches = text.match(new RegExp(escaped, 'gi'));
+      const total = matches ? matches.length : 0;
+      if (countEl) countEl.textContent = `${total} kết quả`;
+      return total;
+    }
+
+    function replaceNextMatch() {
+      const findVal = document.getElementById('find-query-input').value;
+      const repVal = document.getElementById('replace-query-input').value;
+      if (!findVal) return;
+      const editor = document.getElementById('editor-content');
+      if (!editor) return;
+      const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null);
+      let node;
+      while ((node = walker.nextNode())) {
+        const idx = node.nodeValue.toLowerCase().indexOf(findVal.toLowerCase());
+        if (idx !== -1) {
+          node.nodeValue = node.nodeValue.substring(0, idx) + repVal + node.nodeValue.substring(idx + findVal.length);
+          handleEditorInput();
+          runFindCount();
+          showToast('Đã thay thế 1 vị trí');
+          return;
+        }
+      }
+      showToast('Không tìm thấy từ khóa cần thay thế', 'warn');
+    }
+
+    function replaceAllMatches() {
+      const findVal = document.getElementById('find-query-input').value;
+      const repVal = document.getElementById('replace-query-input').value;
+      if (!findVal) return;
+      const editor = document.getElementById('editor-content');
+      if (!editor) return;
+      const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null);
+      const regex = new RegExp(findVal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      let count = 0;
+      let node;
+      while ((node = walker.nextNode())) {
+        if (regex.test(node.nodeValue)) {
+          count += (node.nodeValue.match(regex) || []).length;
+          node.nodeValue = node.nodeValue.replace(regex, repVal);
+        }
+      }
+      handleEditorInput();
+      runFindCount();
+      showToast(`Đã thay thế tất cả (${count} vị trí)`);
+    }
+
+    // --- 8. Document Outline & Live Status Bar ---
+    function refreshDocumentOutline() {
+      const editor = document.getElementById('editor-content');
+      const list = document.getElementById('outline-list');
+      if (!editor || !list) return;
+      const headings = editor.querySelectorAll('h1, h2, h3, h4');
+      if (!headings.length) {
+        list.innerHTML = `<div class="text-slate-400 italic py-2">Chưa có thẻ Heading (H1-H4)</div>`;
+        return;
+      }
+      list.innerHTML = '';
+      headings.forEach((h, index) => {
+        if (!h.id) h.id = `doc-heading-${index}`;
+        const level = parseInt(h.tagName.substring(1), 10) || 1;
+        const padLeft = (level - 1) * 10;
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.style.paddingLeft = `${padLeft + 8}px`;
+        item.className = 'w-full text-left py-1.5 pr-2 rounded-lg hover:bg-indigo-500/10 text-slate-700 dark:text-slate-300 truncate block transition';
+        item.innerHTML = `<span class="text-[10px] font-mono text-indigo-500 mr-1.5">${h.tagName}</span>${h.textContent || 'Tiêu đề'}`;
+        item.onclick = () => {
+          h.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        };
+        list.appendChild(item);
+      });
+    }
+
+    function updateStatusBar() {
+      const editor = document.getElementById('editor-content');
+      if (!editor) return;
+      const rawText = (editor.innerText || '').trim();
+      const words = rawText ? rawText.split(/\s+/).length : 0;
+      const chars = rawText.length;
+      const pages = Math.max(1, Math.ceil(editor.scrollHeight / 1050));
+      const zoneCount = Object.keys(zonesMap).length;
+
+      document.getElementById('stat-pages').textContent = String(pages);
+      document.getElementById('stat-words').textContent = String(words);
+      document.getElementById('stat-chars').textContent = String(chars);
+      document.getElementById('stat-zones').textContent = String(zoneCount);
+
+      const activeInfo = document.getElementById('stat-active-zone-info');
+      const activeBadge = document.getElementById('active-zone-badge');
+      const activeZone = appState.activeZoneId ? zonesMap[appState.activeZoneId] : null;
+      if (activeZone) {
+        const zoomPct = Math.round(activeZone.viewport.scale * 100);
+        if (activeInfo) {
+          activeInfo.textContent = `Đang chọn: ${activeZone.name} [${formatLayerName(activeZone.layerMode)} | Zoom ${zoomPct}%]`;
+        }
+        if (activeBadge) {
+          activeBadge.textContent = `${activeZone.name} (${zoomPct}%)`;
+        }
+      } else {
+        if (activeInfo) activeInfo.textContent = 'Chế độ: Soạn thảo văn bản';
+        if (activeBadge) activeBadge.textContent = 'Chưa chọn Zone';
+      }
+    }
+
+    function handleEditorInput() {
+      updateStatusBar();
+      refreshDocumentOutline();
+      scheduleAutoSave();
+    }
+
+    function handleEditorClick(e) {
+      // If clicking inside editor outside an inline drawing zone, deselect active zone unless creating
+      if (!e.target.closest('.drawing-zone') && !appState.createZoneMode) {
+        selectDrawingZone(null);
+      }
+    }
+
+    /* ============================================================================
+     * PHẦN 3: ENGINE KHÔNG GIAN VẼ TRỰC TIẾP ĐA LỚP (3 LAYERS + VIEWPORT PAN/ZOOM)
+     * ============================================================================ */
+
+    function formatLayerName(layerMode) {
+      const map = {
+        'overlay': 'Lớp 1: Trên chữ',
+        'underlay': 'Lớp 2: Dưới chữ',
+        'inline-break': 'Lớp 3A: Ngắt dòng',
+        'inline-wrap-left': 'Lớp 3B: Bao chữ (Trái)',
+        'inline-wrap-right': 'Lớp 3C: Bao chữ (Phải)'
+      };
+      return map[layerMode] || 'Lớp 1: Trên chữ';
+    }
+
+    // --- 3.1 Drag-to-Create Drawing Zone on Document Page ---
+    function startCreateZoneMode() {
+      closeAllTopDropdowns();
+      appState.createZoneMode = true;
+      const docPage = document.getElementById('doc-page');
+      const tooltip = document.getElementById('create-zone-tooltip');
+      const btn = document.getElementById('btn-create-draw-zone');
+      if (docPage) docPage.style.cursor = 'crosshair';
+      if (tooltip) tooltip.style.display = 'block';
+      if (btn) btn.classList.add('ring-4', 'ring-indigo-400/50');
+      showToast('Chế độ Tạo Không Gian Vẽ: Nhấp và kéo chuột trên trang tài liệu để định hình kích thước');
+    }
+
+    function stopCreateZoneMode() {
+      appState.createZoneMode = false;
+      const docPage = document.getElementById('doc-page');
+      const tooltip = document.getElementById('create-zone-tooltip');
+      const marquee = document.getElementById('creation-marquee');
+      const btn = document.getElementById('btn-create-draw-zone');
+      if (docPage) docPage.style.cursor = 'default';
+      if (tooltip) tooltip.style.display = 'none';
+      if (marquee) marquee.style.display = 'none';
+      if (btn) btn.classList.remove('ring-4', 'ring-indigo-400/50');
+    }
+
+    function insertPresetDrawingZone(layerMode = 'overlay') {
+      closeAllTopDropdowns();
+      const id = `zone_${Date.now()}_${zoneCounter}`;
+      const newZone = {
+        id,
+        name: `Zone #${zoneCounter++}`,
+        x: 90,
+        y: 160 + (Object.keys(zonesMap).length * 40) % 300,
+        width: layerMode.startsWith('inline-wrap') ? 280 : 520,
+        height: 220,
+        layerMode: layerMode,
+        clickThrough: false,
+        visible: true,
+        locked: false,
+        zoneOpacity: 1.0,
+        bgColor: 'transparent',
+        viewport: { scale: 1.0, offsetX: 0, offsetY: 0 },
+        commands: [],
+        redoStack: []
+      };
+      zonesMap[id] = newZone;
+      mountDrawingZoneDOM(newZone);
+      selectDrawingZone(id);
+      renderLayersSidebar();
+      updateStatusBar();
+      scheduleAutoSave();
+      showToast(`Đã chèn ${newZone.name} (${formatLayerName(layerMode)})`);
+    }
+
+    // --- 3.2 Mount & Render Drawing Zone Container + Retina High-DPI Canvas ---
+    function mountDrawingZoneDOM(zone) {
+      const existing = document.getElementById(zone.id);
+      if (existing) existing.remove();
+
+      const container = document.createElement('div');
+      container.id = zone.id;
+      container.className = `drawing-zone ${appState.cleanZoneBorders ? 'zone-clean-view' : ''} ${zone.clickThrough ? 'click-through-active' : ''}`;
+      container.style.opacity = String(zone.zoneOpacity ?? 1.0);
+
+      // Position & Layer placement
+      applyZoneLayerPlacement(container, zone);
+
+      // Top Floating Header Bar (Move handle + Layer switcher + Quick actions)
+      const headerBar = document.createElement('div');
+      headerBar.className = 'zone-header-bar';
+      headerBar.innerHTML = `
+        <i class="fa-solid fa-arrows-up-down-left-right mr-1"></i>
+        <span>${zone.name}</span>
+        <span class="px-1.5 py-0.2 bg-white/20 rounded text-[10px] ml-1">${formatLayerName(zone.layerMode)}</span>
+        <button type="button" onclick="cycleZoneLayerMode('${zone.id}', event)" class="ml-1 px-1.5 py-0.5 rounded bg-white/20 hover:bg-white/30 text-[10px]" title="Đổi nhanh chế độ Lớp (Trên chữ / Dưới chữ / Ngang chữ)">
+          Đổi Lớp
+        </button>
+        <button type="button" onclick="resetZoneViewport('${zone.id}', event)" class="px-1.5 py-0.5 rounded bg-white/20 hover:bg-white/30 text-[10px]" title="Reset góc nhìn Zoom 100%">
+          100%
+        </button>
+      `;
+      container.appendChild(headerBar);
+
+      // 4 Border Edge Drag Strips (8-12px buffer around edges for moving the zone)
+      ['top', 'bottom', 'left', 'right'].forEach((edge) => {
+        const edgeEl = document.createElement('div');
+        edgeEl.className = `zone-edge-drag ${edge}`;
+        edgeEl.dataset.edgeMove = zone.id;
+        container.appendChild(edgeEl);
+      });
+
+      // 8 Resize Handles
+      ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].forEach((dir) => {
+        const handle = document.createElement('div');
+        handle.className = `resize-handle ${dir}`;
+        handle.dataset.resizeDir = dir;
+        handle.dataset.zoneId = zone.id;
+        container.appendChild(handle);
+      });
+
+      // Viewport HUD (Bottom-right inside Zone: Zoom Out / Reset 100% / Zoom In / Pan indicator)
+      const hud = document.createElement('div');
+      hud.className = 'zone-viewport-hud';
+      hud.innerHTML = `
+        <button type="button" onclick="zoomZoneByButton('${zone.id}', -0.25, event)" class="px-1 hover:text-cyan-300" title="Thu nhỏ nội dung vẽ (-)">-</button>
+        <button type="button" onclick="resetZoneViewport('${zone.id}', event)" id="hud-zoom-${zone.id}" class="px-1 hover:text-cyan-300" title="Reset 100%">${Math.round(zone.viewport.scale * 100)}%</button>
+        <button type="button" onclick="zoomZoneByButton('${zone.id}', 0.25, event)" class="px-1 hover:text-cyan-300" title="Phóng to nội dung vẽ (+)">+</button>
+      `;
+      container.appendChild(hud);
+
+      // High-DPI HTML5 Canvas
+      const canvas = document.createElement('canvas');
+      canvas.id = `canvas_${zone.id}`;
+      canvas.className = 'w-full h-full block rounded-[5px]';
+      container.appendChild(canvas);
+
+      // Attach Interactive Events to Zone & Canvas
+      bindZoneInteractions(container, canvas, headerBar, zone);
+
+      // Size & Render High-DPI Canvas
+      resizeZoneCanvasBuffer(zone);
+      renderZoneCanvas(zone);
+    }
+
+    function applyZoneLayerPlacement(container, zone) {
+      container.classList.remove('mode-inline-break', 'mode-inline-wrap-left', 'mode-inline-wrap-right');
+      container.style.width = `${zone.width}px`;
+      container.style.height = `${zone.height}px`;
+
+      if (zone.layerMode === 'overlay') {
+        container.style.left = `${zone.x}px`;
+        container.style.top = `${zone.y}px`;
+        const overlayLayer = document.getElementById('overlay-layer');
+        if (overlayLayer && container.parentElement !== overlayLayer) {
+          overlayLayer.appendChild(container);
+        }
+      } else if (zone.layerMode === 'underlay') {
+        container.style.left = `${zone.x}px`;
+        container.style.top = `${zone.y}px`;
+        const underlayLayer = document.getElementById('underlay-layer');
+        if (underlayLayer && container.parentElement !== underlayLayer) {
+          underlayLayer.appendChild(container);
+        }
+      } else {
+        // Layer 3: Inline with Text (Break Text or Wrap Text Left/Right)
+        container.setAttribute('contenteditable', 'false');
+        container.classList.add(`mode-${zone.layerMode}`);
+        const editor = document.getElementById('editor-content');
+        if (editor && container.parentElement !== editor) {
+          // Insert at target paragraph based on zone.y or before first middle paragraph
+          const paragraphs = Array.from(editor.children).filter((el) => !el.classList.contains('drawing-zone'));
+          let inserted = false;
+          for (const p of paragraphs) {
+            if (p.offsetTop >= zone.y) {
+              editor.insertBefore(container, p);
+              inserted = true;
+              break;
+            }
+          }
+          if (!inserted) {
+            editor.appendChild(container);
+          }
+        }
+      }
+    }
+
+    function resizeZoneCanvasBuffer(zone) {
+      const canvas = document.getElementById(`canvas_${zone.id}`);
+      if (!canvas) return;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(10, Math.floor(zone.width * dpr));
+      canvas.height = Math.max(10, Math.floor(zone.height * dpr));
+    }
+
+    // --- 3.3 Inverse Matrix Coordinate Mapping (Screen -> World Coordinates) ---
+    function screenToWorldCoordinates(clientX, clientY, zone) {
+      const canvas = document.getElementById(`canvas_${zone.id}`);
+      if (!canvas) return { x: 0, y: 0 };
+      const rect = canvas.getBoundingClientRect();
+      // Account for page zoom scaling on #page-stage-wrapper
+      const localX = (clientX - rect.left) / (rect.width / zone.width);
+      const localY = (clientY - rect.top) / (rect.height / zone.height);
+      const worldX = (localX - zone.viewport.offsetX) / zone.viewport.scale;
+      const worldY = (localY - zone.viewport.offsetY) / zone.viewport.scale;
+      return { x: worldX, y: worldY, localX, localY };
+    }
+
+    // --- 3.4 Multi-Tool Vector & Freehand Rendering Pipeline ---
+    function renderZoneCanvas(zone, livePreviewCmd = null) {
+      const canvas = document.getElementById(`canvas_${zone.id}`);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, zone.width, zone.height);
+
+      // Optional Zone Background Fill
+      if (zone.bgColor && zone.bgColor !== 'transparent') {
+        ctx.fillStyle = zone.bgColor;
+        ctx.fillRect(0, 0, zone.width, zone.height);
+      }
+
+      // Apply 2D Camera Viewport Transform (Pan & Zoom inside the Drawing Zone)
+      ctx.translate(zone.viewport.offsetX, zone.viewport.offsetY);
+      ctx.scale(zone.viewport.scale, zone.viewport.scale);
+
+      // Subtle infinite grid dots when zoomed/panned or selected
+      if (appState.activeZoneId === zone.id && (zone.viewport.scale !== 1 || zone.viewport.offsetX !== 0 || zone.viewport.offsetY !== 0)) {
+        drawViewportGrid(ctx, zone);
+      }
+
+      // Render all committed commands in World Coordinates
+      for (const cmd of zone.commands) {
+        drawSingleCommand(ctx, cmd);
+      }
+
+      // Render live shape / stroke preview while dragging
+      if (livePreviewCmd) {
+        drawSingleCommand(ctx, livePreviewCmd);
+      }
+
+      ctx.restore();
+    }
+
+    function drawViewportGrid(ctx, zone) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(99, 102, 241, 0.22)';
+      const step = 25;
+      const startX = Math.floor((-zone.viewport.offsetX / zone.viewport.scale) / step) * step;
+      const startY = Math.floor((-zone.viewport.offsetY / zone.viewport.scale) / step) * step;
+      const endX = startX + (zone.width / zone.viewport.scale) + step * 2;
+      const endY = startY + (zone.height / zone.viewport.scale) + step * 2;
+
+      for (let gx = startX; gx < endX; gx += step) {
+        for (let gy = startY; gy < endY; gy += step) {
+          ctx.fillRect(gx - 0.75, gy - 0.75, 1.5, 1.5);
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawSingleCommand(ctx, cmd) {
+      ctx.save();
+      ctx.globalAlpha = cmd.opacity ?? 1.0;
+      ctx.strokeStyle = cmd.strokeColor || '#4f46e5';
+      ctx.fillStyle = cmd.fillColor || '#38bdf8';
+      ctx.lineWidth = cmd.strokeWidth || 3;
+      ctx.lineCap = cmd.tool === 'marker' ? 'square' : 'round';
+      ctx.lineJoin = 'round';
+
+      if (cmd.strokeStyle === 'dashed') {
+        ctx.setLineDash([cmd.strokeWidth * 2.5, cmd.strokeWidth * 1.8]);
+      } else if (cmd.strokeStyle === 'dotted') {
+        ctx.setLineDash([cmd.strokeWidth * 0.5, cmd.strokeWidth * 1.8]);
+      } else {
+        ctx.setLineDash([]);
+      }
+
+      if (cmd.tool === 'eraser') {
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.globalAlpha = 1.0;
+      } else if (cmd.tool === 'marker') {
+        ctx.globalAlpha = Math.min(cmd.opacity ?? 0.45, 0.45);
+      } else if (cmd.tool === 'airbrush') {
+        ctx.shadowColor = cmd.strokeColor || '#4f46e5';
+        ctx.shadowBlur = (cmd.strokeWidth || 4) * 1.8;
+      }
+
+      const pts = cmd.points || [];
+
+      if (cmd.tool === 'pen' || cmd.tool === 'marker' || cmd.tool === 'airbrush' || cmd.tool === 'eraser') {
+        if (pts.length === 1) {
+          ctx.beginPath();
+          ctx.arc(pts[0].x, pts[0].y, (cmd.strokeWidth || 3) / 2, 0, Math.PI * 2);
+          ctx.fillStyle = cmd.strokeColor || '#4f46e5';
+          ctx.fill();
+        } else if (pts.length > 1) {
+          // Quadratic Bézier Curve Smoothing
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < pts.length - 1; i++) {
+            const midX = (pts[i].x + pts[i + 1].x) / 2;
+            const midY = (pts[i].y + pts[i + 1].y) / 2;
+            ctx.quadraticCurveTo(pts[i].x, pts[i].y, midX, midY);
+          }
+          const last = pts[pts.length - 1];
+          ctx.lineTo(last.x, last.y);
+          ctx.stroke();
+        }
+      } else if (cmd.tool === 'line' && pts.length >= 2) {
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        ctx.lineTo(pts[1].x, pts[1].y);
+        ctx.stroke();
+      } else if (cmd.tool === 'arrow' && pts.length >= 2) {
+        const p0 = pts[0];
+        const p1 = pts[1];
+        const angle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+        const headLen = Math.max(10, (cmd.strokeWidth || 3) * 3.2);
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.setLineDash([]);
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p1.x - headLen * Math.cos(angle - Math.PI / 6), p1.y - headLen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(p1.x - headLen * Math.cos(angle + Math.PI / 6), p1.y - headLen * Math.sin(angle + Math.PI / 6));
+        ctx.closePath();
+        ctx.fillStyle = cmd.strokeColor || '#4f46e5';
+        ctx.fill();
+      } else if (cmd.tool === 'rect' && pts.length >= 2) {
+        const x = Math.min(pts[0].x, pts[1].x);
+        const y = Math.min(pts[0].y, pts[1].y);
+        const w = Math.abs(pts[1].x - pts[0].x);
+        const h = Math.abs(pts[1].y - pts[0].y);
+        ctx.beginPath();
+        ctx.rect(x, y, w, h);
+        applyShapeFillStroke(ctx, cmd.shapeMode);
+      } else if (cmd.tool === 'ellipse' && pts.length >= 2) {
+        const cx = (pts[0].x + pts[1].x) / 2;
+        const cy = (pts[0].y + pts[1].y) / 2;
+        const rx = Math.abs(pts[1].x - pts[0].x) / 2;
+        const ry = Math.abs(pts[1].y - pts[0].y) / 2;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        applyShapeFillStroke(ctx, cmd.shapeMode);
+      } else if (cmd.tool === 'triangle' && pts.length >= 2) {
+        const x0 = pts[0].x, y0 = pts[0].y, x1 = pts[1].x, y1 = pts[1].y;
+        ctx.beginPath();
+        ctx.moveTo((x0 + x1) / 2, y0);
+        ctx.lineTo(x1, y1);
+        ctx.lineTo(x0, y1);
+        ctx.closePath();
+        applyShapeFillStroke(ctx, cmd.shapeMode);
+      } else if (cmd.tool === 'diamond' && pts.length >= 2) {
+        const x0 = pts[0].x, y0 = pts[0].y, x1 = pts[1].x, y1 = pts[1].y;
+        const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, y0);
+        ctx.lineTo(x1, cy);
+        ctx.lineTo(cx, y1);
+        ctx.lineTo(x0, cy);
+        ctx.closePath();
+        applyShapeFillStroke(ctx, cmd.shapeMode);
+      } else if (cmd.tool === 'star' && pts.length >= 2) {
+        const cx = (pts[0].x + pts[1].x) / 2;
+        const cy = (pts[0].y + pts[1].y) / 2;
+        const outerR = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y) / 2;
+        const innerR = outerR * 0.42;
+        ctx.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const r = i % 2 === 0 ? outerR : innerR;
+          const a = (i * Math.PI) / 5 - Math.PI / 2;
+          const sx = cx + r * Math.cos(a);
+          const sy = cy + r * Math.sin(a);
+          if (i === 0) ctx.moveTo(sx, sy);
+          else ctx.lineTo(sx, sy);
+        }
+        ctx.closePath();
+        applyShapeFillStroke(ctx, cmd.shapeMode);
+      } else if (cmd.tool === 'text' && cmd.text && pts.length >= 1) {
+        const fontSize = Math.max(12, (cmd.strokeWidth || 4) * 3.8);
+        ctx.font = `600 ${fontSize}px 'Plus Jakarta Sans', 'Inter', sans-serif`;
+        ctx.fillStyle = cmd.strokeColor || '#0f172a';
+        ctx.fillText(cmd.text, pts[0].x, pts[0].y);
+      }
+
+      ctx.restore();
+    }
+
+    function applyShapeFillStroke(ctx, shapeMode) {
+      if (shapeMode === 'fill' || shapeMode === 'both') {
+        ctx.fill();
+      }
+      if (shapeMode === 'stroke' || shapeMode === 'both' || !shapeMode) {
+        ctx.stroke();
+      }
+    }
+
+    // --- 3.5 Interactive Zone Mouse / Wheel / Pan / Draw / Move / Resize Events ---
+    let spacebarPressed = false;
+    let activeInteraction = null; // { type: 'draw'|'pan'|'move-zone'|'resize-zone'|'create-zone', ... }
+
+    function bindZoneInteractions(container, canvas, headerBar, zone) {
+      // Hover Brush Preview inside Canvas
+      canvas.addEventListener('mousemove', (e) => {
+        if (appState.createZoneMode) return;
+        const brushEl = document.getElementById('brush-cursor-preview');
+        if (!brushEl) return;
+        if (spacebarPressed || appState.drawConfig.tool === 'pan') {
+          canvas.style.cursor = 'grab';
+          brushEl.style.display = 'none';
+          return;
+        }
+        canvas.style.cursor = 'none';
+        const size = Math.max(6, appState.drawConfig.strokeWidth * zone.viewport.scale * appState.pageZoom);
+        brushEl.style.width = `${size}px`;
+        brushEl.style.height = `${size}px`;
+        brushEl.style.left = `${e.clientX}px`;
+        brushEl.style.top = `${e.clientY}px`;
+        brushEl.style.backgroundColor = appState.drawConfig.tool === 'eraser'
+          ? 'rgba(255,255,255,0.7)'
+          : appState.drawConfig.strokeColor;
+        brushEl.style.opacity = String(appState.drawConfig.opacity);
+        brushEl.style.display = 'block';
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        const brushEl = document.getElementById('brush-cursor-preview');
+        if (brushEl) brushEl.style.display = 'none';
+      });
+
+      // Zoom In / Out inside Zone via Mouse Wheel (Ctrl/Alt + Wheel or direct Wheel when zone is selected)
+      canvas.addEventListener('wheel', (e) => {
+        if (e.ctrlKey || e.altKey || appState.activeZoneId === zone.id) {
+          e.preventDefault();
+          e.stopPropagation();
+          const delta = e.deltaY < 0 ? 1.12 : 0.89;
+          const newScale = Math.min(5.0, Math.max(0.25, zone.viewport.scale * delta));
+
+          const rect = canvas.getBoundingClientRect();
+          const mouseX = (e.clientX - rect.left) / (rect.width / zone.width);
+          const mouseY = (e.clientY - rect.top) / (rect.height / zone.height);
+
+          // Zoom toward mouse position
+          zone.viewport.offsetX = mouseX - (mouseX - zone.viewport.offsetX) * (newScale / zone.viewport.scale);
+          zone.viewport.offsetY = mouseY - (mouseY - zone.viewport.offsetY) * (newScale / zone.viewport.scale);
+          zone.viewport.scale = newScale;
+
+          updateZoneHudZoom(zone);
+          renderZoneCanvas(zone);
+          updateStatusBar();
+        }
+      }, { passive: false });
+
+      // Canvas Mousedown: Pan or Draw
+      canvas.addEventListener('mousedown', (e) => {
+        if (appState.createZoneMode) return;
+        e.stopPropagation();
+        selectDrawingZone(zone.id);
+        if (zone.locked) {
+          showToast(`${zone.name} đang bị khóa chỉnh sửa`, 'warn');
+          return;
+        }
+
+        // Pan Viewport if Spacebar held, Middle click, or Pan tool active
+        if (spacebarPressed || e.button === 1 || appState.drawConfig.tool === 'pan') {
+          e.preventDefault();
+          activeInteraction = {
+            type: 'pan',
+            zoneId: zone.id,
+            startX: e.clientX,
+            startY: e.clientY,
+            origOffsetX: zone.viewport.offsetX,
+            origOffsetY: zone.viewport.offsetY
+          };
+          return;
+        }
+
+        const worldPt = screenToWorldCoordinates(e.clientX, e.clientY, zone);
+
+        // Text Stamp Tool
+        if (appState.drawConfig.tool === 'text') {
+          appState.pendingTextStamp = { zoneId: zone.id, pt: worldPt };
+          openModal('modal-canvas-text');
+          const inp = document.getElementById('canvas-text-value');
+          if (inp) {
+            inp.value = '';
+            inp.focus();
+          }
+          return;
+        }
+
+        // Freehand or Shape Tool
+        const cmd = {
+          tool: appState.drawConfig.tool,
+          shapeMode: appState.drawConfig.shapeMode,
+          strokeColor: appState.drawConfig.strokeColor,
+          fillColor: appState.drawConfig.fillColor,
+          strokeWidth: appState.drawConfig.tool === 'marker' ? Math.max(14, appState.drawConfig.strokeWidth * 2.5) : appState.drawConfig.strokeWidth,
+          opacity: appState.drawConfig.opacity,
+          strokeStyle: appState.drawConfig.strokeStyle,
+          points: [worldPt]
+        };
+
+        activeInteraction = {
+          type: 'draw',
+          zoneId: zone.id,
+          cmd
+        };
+        renderZoneCanvas(zone, cmd);
+      });
+
+      // Header Bar & Border Edge Dragging to Move the Zone
+      const startMoveZone = (e) => {
+        if (e.target.closest('button')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        selectDrawingZone(zone.id);
+        activeInteraction = {
+          type: 'move-zone',
+          zoneId: zone.id,
+          startX: e.clientX,
+          startY: e.clientY,
+          origX: zone.x,
+          origY: zone.y
+        };
+      };
+
+      headerBar.addEventListener('mousedown', startMoveZone);
+      container.querySelectorAll('.zone-edge-drag').forEach((edgeEl) => {
+        edgeEl.addEventListener('mousedown', startMoveZone);
+      });
+
+      // 8-Point Resize Handles
+      container.querySelectorAll('.resize-handle').forEach((handle) => {
+        handle.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          selectDrawingZone(zone.id);
+          activeInteraction = {
+            type: 'resize-zone',
+            zoneId: zone.id,
+            dir: handle.dataset.resizeDir,
+            startX: e.clientX,
+            startY: e.clientY,
+            origX: zone.x,
+            origY: zone.y,
+            origW: zone.width,
+            origH: zone.height
+          };
+        });
+      });
+    }
+
+    // Global Document Page Mousedown for Create Drawing Zone Mode
+    function initGlobalStageEvents() {
+      const docPage = document.getElementById('doc-page');
+      const tooltip = document.getElementById('create-zone-tooltip');
+      const marquee = document.getElementById('creation-marquee');
+      const marqueeLabel = document.getElementById('creation-marquee-label');
+
+      window.addEventListener('mousemove', (e) => {
+        if (appState.createZoneMode && tooltip) {
+          tooltip.style.left = `${e.clientX + 16}px`;
+          tooltip.style.top = `${e.clientY + 16}px`;
+        }
+
+        if (!activeInteraction) return;
+
+        if (activeInteraction.type === 'create-zone') {
+          const rect = docPage.getBoundingClientRect();
+          const curX = (e.clientX - rect.left) / appState.pageZoom;
+          const curY = (e.clientY - rect.top) / appState.pageZoom;
+          const x = Math.min(activeInteraction.startX, curX);
+          const y = Math.min(activeInteraction.startY, curY);
+          const w = Math.max(40, Math.abs(curX - activeInteraction.startX));
+          const h = Math.max(40, Math.abs(curY - activeInteraction.startY));
+          activeInteraction.box = { x, y, w, h };
+
+          if (marquee) {
+            marquee.style.display = 'block';
+            marquee.style.left = `${x}px`;
+            marquee.style.top = `${y}px`;
+            marquee.style.width = `${w}px`;
+            marquee.style.height = `${h}px`;
+          }
+          if (marqueeLabel) {
+            marqueeLabel.textContent = `${Math.round(w)} × ${Math.round(h)} px`;
+          }
+          return;
+        }
+
+        const zone = zonesMap[activeInteraction.zoneId];
+        if (!zone) return;
+
+        if (activeInteraction.type === 'draw') {
+          const pt = screenToWorldCoordinates(e.clientX, e.clientY, zone);
+          const cmd = activeInteraction.cmd;
+          if (['pen', 'marker', 'airbrush', 'eraser'].includes(cmd.tool)) {
+            cmd.points.push(pt);
+          } else {
+            cmd.points[1] = pt;
+          }
+          renderZoneCanvas(zone, cmd);
+        } else if (activeInteraction.type === 'pan') {
+          const dx = (e.clientX - activeInteraction.startX) / appState.pageZoom;
+          const dy = (e.clientY - activeInteraction.startY) / appState.pageZoom;
+          zone.viewport.offsetX = activeInteraction.origOffsetX + dx;
+          zone.viewport.offsetY = activeInteraction.origOffsetY + dy;
+          renderZoneCanvas(zone);
+        } else if (activeInteraction.type === 'move-zone') {
+          const dx = (e.clientX - activeInteraction.startX) / appState.pageZoom;
+          const dy = (e.clientY - activeInteraction.startY) / appState.pageZoom;
+          zone.x = Math.max(0, Math.round(activeInteraction.origX + dx));
+          zone.y = Math.max(0, Math.round(activeInteraction.origY + dy));
+          const el = document.getElementById(zone.id);
+          if (el) {
+            if (zone.layerMode === 'overlay' || zone.layerMode === 'underlay') {
+              el.style.left = `${zone.x}px`;
+              el.style.top = `${zone.y}px`;
+            } else {
+              // Reflow inline zone among paragraphs as user drags vertically
+              applyZoneLayerPlacement(el, zone);
+            }
+          }
+        } else if (activeInteraction.type === 'resize-zone') {
+          const dx = (e.clientX - activeInteraction.startX) / appState.pageZoom;
+          const dy = (e.clientY - activeInteraction.startY) / appState.pageZoom;
+          const dir = activeInteraction.dir;
+          let nx = activeInteraction.origX;
+          let ny = activeInteraction.origY;
+          let nw = activeInteraction.origW;
+          let nh = activeInteraction.origH;
+
+          if (dir.includes('e')) nw = Math.max(100, activeInteraction.origW + dx);
+          if (dir.includes('s')) nh = Math.max(70, activeInteraction.origH + dy);
+          if (dir.includes('w')) {
+            const possibleW = activeInteraction.origW - dx;
+            if (possibleW >= 100) {
+              nw = possibleW;
+              nx = activeInteraction.origX + dx;
+            }
+          }
+          if (dir.includes('n')) {
+            const possibleH = activeInteraction.origH - dy;
+            if (possibleH >= 70) {
+              nh = possibleH;
+              ny = activeInteraction.origY + dy;
+            }
+          }
+
+          zone.x = Math.round(nx);
+          zone.y = Math.round(ny);
+          zone.width = Math.round(nw);
+          zone.height = Math.round(nh);
+
+          const el = document.getElementById(zone.id);
+          if (el) {
+            el.style.width = `${zone.width}px`;
+            el.style.height = `${zone.height}px`;
+            if (zone.layerMode === 'overlay' || zone.layerMode === 'underlay') {
+              el.style.left = `${zone.x}px`;
+              el.style.top = `${zone.y}px`;
+            }
+          }
+          resizeZoneCanvasBuffer(zone);
+          renderZoneCanvas(zone);
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (!activeInteraction) return;
+
+        if (activeInteraction.type === 'create-zone') {
+          const box = activeInteraction.box;
+          stopCreateZoneMode();
+          if (box && box.w >= 30 && box.h >= 30) {
+            const id = `zone_${Date.now()}_${zoneCounter}`;
+            const selectedLayer = document.getElementById('active-zone-layer-select').value || 'overlay';
+            const newZone = {
+              id,
+              name: `Zone #${zoneCounter++}`,
+              x: Math.round(box.x),
+              y: Math.round(box.y),
+              width: Math.round(box.w),
+              height: Math.round(box.h),
+              layerMode: selectedLayer,
+              clickThrough: false,
+              visible: true,
+              locked: false,
+              zoneOpacity: 1.0,
+              bgColor: 'transparent',
+              viewport: { scale: 1.0, offsetX: 0, offsetY: 0 },
+              commands: [],
+              redoStack: []
+            };
+            zonesMap[id] = newZone;
+            mountDrawingZoneDOM(newZone);
+            selectDrawingZone(id);
+            renderLayersSidebar();
+            updateStatusBar();
+            scheduleAutoSave();
+            showToast(`Đã khởi tạo ${newZone.name} (${newZone.width}×${newZone.height} px)`);
+          }
+          activeInteraction = null;
+          return;
+        }
+
+        const zone = zonesMap[activeInteraction.zoneId];
+        if (zone && activeInteraction.type === 'draw') {
+          zone.commands.push(activeInteraction.cmd);
+          zone.redoStack = [];
+          renderZoneCanvas(zone);
+          scheduleAutoSave();
+        } else if (zone) {
+          scheduleAutoSave();
+        }
+        activeInteraction = null;
+      });
+
+      if (docPage) {
+        docPage.addEventListener('mousedown', (e) => {
+          if (!appState.createZoneMode) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const rect = docPage.getBoundingClientRect();
+          const startX = (e.clientX - rect.left) / appState.pageZoom;
+          const startY = (e.clientY - rect.top) / appState.pageZoom;
+          activeInteraction = {
+            type: 'create-zone',
+            startX,
+            startY,
+            box: { x: startX, y: startY, w: 180, h: 120 }
+          };
+        });
+      }
+
+      // Keyboard Shortcuts (Spacebar Pan, Escape, Ctrl+F, Alt+D)
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && document.activeElement !== document.getElementById('editor-content') && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+          spacebarPressed = true;
+        }
+        if (e.key === 'Escape') {
+          stopCreateZoneMode();
+          closeAllTopDropdowns();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+          e.preventDefault();
+          openFindReplaceModal();
+        }
+        if (e.altKey && e.key.toLowerCase() === 'd') {
+          e.preventDefault();
+          startCreateZoneMode();
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        if (e.code === 'Space') {
+          spacebarPressed = false;
+        }
+      });
+    }
+
+    // --- 3.6 Drawing Studio Toolbar Actions & Layer Switching ---
+    function selectDrawingZone(zoneId) {
+      appState.activeZoneId = zoneId;
+      document.querySelectorAll('.drawing-zone').forEach((el) => {
+        el.classList.toggle('selected', el.id === zoneId);
+      });
+      const zone = zoneId ? zonesMap[zoneId] : null;
+      if (zone) {
+        const layerSelect = document.getElementById('active-zone-layer-select');
+        if (layerSelect) layerSelect.value = zone.layerMode;
+        const ctBtn = document.getElementById('btn-zone-clickthrough');
+        if (ctBtn) {
+          ctBtn.classList.toggle('bg-indigo-600', !!zone.clickThrough);
+          ctBtn.classList.toggle('text-white', !!zone.clickThrough);
+        }
+        renderZoneCanvas(zone);
+      }
+      renderLayersSidebar();
+      updateStatusBar();
+    }
+
+    function selectDrawTool(toolName) {
+      appState.drawConfig.tool = toolName;
+      document.querySelectorAll('.draw-tool-btn').forEach((btn) => {
+        const isCurrent = btn.getAttribute('data-draw-tool') === toolName;
+        btn.classList.toggle('bg-indigo-600', isCurrent);
+        btn.classList.toggle('text-white', isCurrent);
+      });
+    }
+
+    function updateDrawConfig(key, value) {
+      if (key === 'strokeWidth') {
+        appState.drawConfig.strokeWidth = parseInt(value, 10) || 4;
+        document.getElementById('draw-width-label').textContent = `${appState.drawConfig.strokeWidth}px`;
+      } else if (key === 'opacity') {
+        const pct = parseInt(value, 10) || 100;
+        appState.drawConfig.opacity = pct / 100;
+        document.getElementById('draw-opacity-label').textContent = `${pct}%`;
+      } else {
+        appState.drawConfig[key] = value;
+      }
+    }
+
+    function setQuickStrokeColor(hex) {
+      appState.drawConfig.strokeColor = hex;
+      const input = document.getElementById('draw-stroke-color');
+      if (input) input.value = hex;
+    }
+
+    async function activateEyeDropper() {
+      if (window.EyeDropper) {
+        try {
+          const eyeDropper = new window.EyeDropper();
+          const result = await eyeDropper.open();
+          if (result && result.sRGBHex) {
+            setQuickStrokeColor(result.sRGBHex);
+            showToast(`Đã lấy mẫu màu: ${result.sRGBHex}`);
+          }
+        } catch (err) {
+          // User canceled eyedropper
+        }
+      } else {
+        document.getElementById('draw-stroke-color').click();
+      }
+    }
+
+    function confirmCanvasTextStamp() {
+      const val = document.getElementById('canvas-text-value').value.trim();
+      closeModal('modal-canvas-text');
+      if (!val || !appState.pendingTextStamp) return;
+      const zone = zonesMap[appState.pendingTextStamp.zoneId];
+      if (!zone) return;
+      zone.commands.push({
+        tool: 'text',
+        text: val,
+        strokeColor: appState.drawConfig.strokeColor,
+        strokeWidth: appState.drawConfig.strokeWidth,
+        opacity: appState.drawConfig.opacity,
+        points: [appState.pendingTextStamp.pt]
+      });
+      zone.redoStack = [];
+      renderZoneCanvas(zone);
+      scheduleAutoSave();
+    }
+
+    function changeActiveZoneLayerMode(newLayerMode) {
+      if (!appState.activeZoneId || !zonesMap[appState.activeZoneId]) {
+        showToast('Hãy chọn một Không gian vẽ trước để đổi chế độ Lớp', 'warn');
+        return;
+      }
+      const zone = zonesMap[appState.activeZoneId];
+      zone.layerMode = newLayerMode;
+      mountDrawingZoneDOM(zone);
+      selectDrawingZone(zone.id);
+      scheduleAutoSave();
+      showToast(`Đã chuyển ${zone.name} sang ${formatLayerName(newLayerMode)}`);
+    }
+
+    function cycleZoneLayerMode(zoneId, event) {
+      if (event) event.stopPropagation();
+      const zone = zonesMap[zoneId];
+      if (!zone) return;
+      const order = ['overlay', 'underlay', 'inline-break', 'inline-wrap-right', 'inline-wrap-left'];
+      const nextIdx = (order.indexOf(zone.layerMode) + 1) % order.length;
+      zone.layerMode = order[nextIdx];
+      mountDrawingZoneDOM(zone);
+      selectDrawingZone(zoneId);
+      scheduleAutoSave();
+      showToast(`${zone.name}: ${formatLayerName(zone.layerMode)}`);
+    }
+
+    function toggleActiveZoneClickThrough() {
+      if (!appState.activeZoneId || !zonesMap[appState.activeZoneId]) return;
+      const zone = zonesMap[appState.activeZoneId];
+      zone.clickThrough = !zone.clickThrough;
+      const el = document.getElementById(zone.id);
+      if (el) el.classList.toggle('click-through-active', zone.clickThrough);
+      selectDrawingZone(zone.id);
+      showToast(zone.clickThrough
+        ? `Đã bật Xuyên chuột (Click-through) cho ${zone.name}: khi bỏ chọn khung vẽ bạn có thể bôi đen chữ bên dưới`
+        : `Đã tắt Xuyên chuột cho ${zone.name}`);
+    }
+
+    function zoomZoneByButton(zoneId, step, event) {
+      if (event) event.stopPropagation();
+      const zone = zonesMap[zoneId];
+      if (!zone) return;
+      zone.viewport.scale = Math.min(5.0, Math.max(0.25, +(zone.viewport.scale + step).toFixed(2)));
+      updateZoneHudZoom(zone);
+      renderZoneCanvas(zone);
+      updateStatusBar();
+    }
+
+    function resetZoneViewport(zoneId, event) {
+      if (event) event.stopPropagation();
+      const zone = zonesMap[zoneId];
+      if (!zone) return;
+      zone.viewport = { scale: 1.0, offsetX: 0, offsetY: 0 };
+      updateZoneHudZoom(zone);
+      renderZoneCanvas(zone);
+      updateStatusBar();
+    }
+
+    function updateZoneHudZoom(zone) {
+      const hudEl = document.getElementById(`hud-zoom-${zone.id}`);
+      if (hudEl) hudEl.textContent = `${Math.round(zone.viewport.scale * 100)}%`;
+    }
+
+    function undoActiveZone() {
+      const zone = appState.activeZoneId ? zonesMap[appState.activeZoneId] : null;
+      if (!zone || !zone.commands.length) return;
+      zone.redoStack.push(zone.commands.pop());
+      renderZoneCanvas(zone);
+      scheduleAutoSave();
+    }
+
+    function redoActiveZone() {
+      const zone = appState.activeZoneId ? zonesMap[appState.activeZoneId] : null;
+      if (!zone || !zone.redoStack.length) return;
+      zone.commands.push(zone.redoStack.pop());
+      renderZoneCanvas(zone);
+      scheduleAutoSave();
+    }
+
+    function clearActiveZone() {
+      const zone = appState.activeZoneId ? zonesMap[appState.activeZoneId] : null;
+      if (!zone) return;
+      zone.commands = [];
+      zone.redoStack = [];
+      renderZoneCanvas(zone);
+      scheduleAutoSave();
+      showToast(`Đã xóa sạch nét vẽ trong ${zone.name}`);
+    }
+
+    function exportActiveZonePNG() {
+      const zone = appState.activeZoneId ? zonesMap[appState.activeZoneId] : null;
+      if (!zone) {
+        showToast('Hãy chọn một Không gian vẽ để xuất ảnh PNG', 'warn');
+        return;
+      }
+      const canvas = document.getElementById(`canvas_${zone.id}`);
+      if (!canvas) return;
+      canvas.toBlob((blob) => {
+        if (blob && window.saveAs) {
+          window.saveAs(blob, `${zone.name.replace(/\s+/g, '_')}_transparent.png`);
+          showToast(`Đã tải xuống ảnh PNG trong suốt của ${zone.name}`, 'success');
+        }
+      }, 'image/png');
+    }
+
+    function deleteActiveZone() {
+      if (!appState.activeZoneId || !zonesMap[appState.activeZoneId]) return;
+      const zone = zonesMap[appState.activeZoneId];
+      const el = document.getElementById(zone.id);
+      if (el) el.remove();
+      delete zonesMap[appState.activeZoneId];
+      appState.activeZoneId = null;
+      renderLayersSidebar();
+      updateStatusBar();
+      scheduleAutoSave();
+      showToast(`Đã xóa ${zone.name}`);
+    }
+
+    function renderLayersSidebar() {
+      const list = document.getElementById('drawing-layers-list');
+      if (!list) return;
+      const zones = Object.values(zonesMap);
+      if (!zones.length) {
+        list.innerHTML = `<div class="text-xs text-slate-400 italic py-2">Chưa có Không gian vẽ nào trên trang.</div>`;
+        return;
+      }
+      list.innerHTML = zones.map((z) => {
+        const isSelected = appState.activeZoneId === z.id;
+        return `
+          <div onclick="selectDrawingZone('${z.id}')" class="p-2.5 rounded-xl border transition cursor-pointer ${isSelected ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/70 hover:border-indigo-400'}">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-xs flex items-center gap-1.5">
+                <i class="fa-solid fa-paintbrush text-indigo-500"></i> ${z.name}
+              </span>
+              <div class="flex items-center gap-1">
+                <button type="button" onclick="toggleZoneVisibility('${z.id}', event)" class="w-6 h-6 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-[11px]" title="Ẩn/Hiện khung vẽ">
+                  <i class="fa-solid ${z.visible ? 'fa-eye text-emerald-500' : 'fa-eye-slash text-slate-400'}"></i>
+                </button>
+                <button type="button" onclick="toggleZoneLock('${z.id}', event)" class="w-6 h-6 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-[11px]" title="Khóa/Mở khóa vẽ">
+                  <i class="fa-solid ${z.locked ? 'fa-lock text-amber-500' : 'fa-lock-open text-slate-400'}"></i>
+                </button>
+              </div>
+            </div>
+            <div class="text-[10px] text-indigo-600 dark:text-indigo-300 font-semibold mt-1">${formatLayerName(z.layerMode)}</div>
+            <div class="flex items-center justify-between text-[10px] text-slate-500 mt-1.5">
+              <span>Độ rõ khung:</span>
+              <input type="range" min="10" max="100" value="${Math.round((z.zoneOpacity ?? 1) * 100)}" oninput="setZoneOverallOpacity('${z.id}', this.value, event)" class="w-24 accent-indigo-500" />
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleZoneVisibility(zoneId, e) {
+      if (e) e.stopPropagation();
+      const zone = zonesMap[zoneId];
+      if (!zone) return;
+      zone.visible = !zone.visible;
+      const el = document.getElementById(zoneId);
+      if (el) el.classList.toggle('zone-hidden', !zone.visible);
+      renderLayersSidebar();
+    }
+
+    function toggleZoneLock(zoneId, e) {
+      if (e) e.stopPropagation();
+      const zone = zonesMap[zoneId];
+      if (!zone) return;
+      zone.locked = !zone.locked;
+      renderLayersSidebar();
+    }
+
+    function setZoneOverallOpacity(zoneId, pctValue, e) {
+      if (e) e.stopPropagation();
+      const zone = zonesMap[zoneId];
+      if (!zone) return;
+      zone.zoneOpacity = (parseInt(pctValue, 10) || 100) / 100;
+      const el = document.getElementById(zoneId);
+      if (el) el.style.opacity = String(zone.zoneOpacity);
+    }
+
+    /* ============================================================================
+     * PHẦN 2.1: QUẢN LÝ ĐA TÀI LIỆU, AUTO-SAVE, VERSION HISTORY & EXPORT/IMPORT
+     * ============================================================================ */
+
+    function serializeCleanEditorHTML() {
+      const editor = document.getElementById('editor-content');
+      if (!editor) return '';
+      const clone = editor.cloneNode(true);
+      clone.querySelectorAll('.drawing-zone').forEach((z) => z.remove());
+      return clone.innerHTML;
+    }
+
+    function buildCurrentDocumentPayload() {
+      const existing = appState.documents[appState.currentDocId] || {};
+      return {
+        id: appState.currentDocId,
+        title: document.getElementById('doc-title-input').value.trim() || 'Tài liệu chưa đặt tên',
+        starred: !!existing.starred,
+        updatedAt: new Date().toISOString(),
+        pageOrientation: appState.pageOrientation,
+        pageMargin: appState.pageMargin,
+        pageBgColor: appState.pageBgColor,
+        htmlContent: serializeCleanEditorHTML(),
+        zones: JSON.parse(JSON.stringify(zonesMap)),
+        versions: existing.versions || []
+      };
+    }
+
+    function scheduleAutoSave() {
+      if (autoSaveTimer) clearTimeout(autoSaveTimer);
+      const statusText = document.getElementById('sync-status-text');
+      if (statusText) statusText.textContent = 'Đang đồng bộ...';
+      autoSaveTimer = setTimeout(() => {
+        saveCurrentDocumentNow();
+      }, 1200);
+    }
+
+    async function saveCurrentDocumentNow() {
+      const payload = buildCurrentDocumentPayload();
+      appState.documents[payload.id] = payload;
+      safeLocalSet('docucanvas_docs_map', appState.documents);
+      safeLocalSet('docucanvas_active_doc_id', payload.id);
+      await saveDocToIDB(payload);
+
+      const nowStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const lastSavedEl = document.getElementById('last-saved-time');
+      const statusText = document.getElementById('sync-status-text');
+
+      if (appState.firebaseConnected && appState.firestoreDb) {
+        try {
+          await appState.firestoreDb.collection('docucanvas_documents').doc(payload.id).set(payload);
+          if (statusText) statusText.textContent = 'Đã lưu vào đám mây';
+          if (lastSavedEl) lastSavedEl.textContent = `Cloud Sync lúc ${nowStr}`;
+          return;
+        } catch (err) {
+          // Fallback to local
+        }
+      }
+
+      if (statusText) statusText.textContent = 'Đã lưu trên thiết bị';
+      if (lastSavedEl) lastSavedEl.textContent = `Đã lưu tự động lúc ${nowStr}`;
+      renderSidebarFilesList();
+    }
+
+    function handleTitleChange() {
+      scheduleAutoSave();
+    }
+
+    function toggleStarDocument() {
+      const doc = appState.documents[appState.currentDocId];
+      if (!doc) return;
+      doc.starred = !doc.starred;
+      const icon = document.getElementById('star-doc-icon');
+      if (icon) {
+        icon.className = doc.starred ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star';
+      }
+      saveCurrentDocumentNow();
+    }
+
+    function loadDocumentIntoWorkspace(docRecord) {
+      if (!docRecord) return;
+      appState.currentDocId = docRecord.id;
+      document.getElementById('doc-title-input').value = docRecord.title || 'Tài liệu';
+      const starIcon = document.getElementById('star-doc-icon');
+      if (starIcon) {
+        starIcon.className = docRecord.starred ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star';
+      }
+
+      setPageOrientation(docRecord.pageOrientation || 'portrait');
+      setPageMargins(docRecord.pageMargin || '64px');
+      setPageBackgroundColor(docRecord.pageBgColor || '#ffffff');
+
+      // Clear existing zones
+      document.querySelectorAll('.drawing-zone').forEach((el) => el.remove());
+      zonesMap = {};
+
+      // Populate HTML Content
+      const editor = document.getElementById('editor-content');
+      if (editor) {
+        editor.innerHTML = docRecord.htmlContent || '<p><br/></p>';
+      }
+
+      // Mount Zones
+      const savedZones = docRecord.zones || {};
+      let maxNum = 1;
+      Object.values(savedZones).forEach((z) => {
+        zonesMap[z.id] = z;
+        const m = String(z.name).match(/(\d+)/);
+        if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10) + 1);
+        mountDrawingZoneDOM(z);
+      });
+      zoneCounter = maxNum;
+
+      const firstZoneId = Object.keys(zonesMap)[0] || null;
+      selectDrawingZone(firstZoneId);
+      refreshDocumentOutline();
+      renderLayersSidebar();
+      renderSidebarFilesList();
+      updateStatusBar();
+    }
+
+    function openDocDashboardModal() {
+      saveCurrentDocumentNow();
+      const grid = document.getElementById('dashboard-docs-grid');
+      if (grid) {
+        const docs = Object.values(appState.documents).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+        grid.innerHTML = docs.map((d) => `
+          <div class="p-3.5 rounded-xl border ${d.id === appState.currentDocId ? 'border-indigo-500 bg-indigo-500/5' : 'border-slate-200 dark:border-slate-700'} flex items-center justify-between gap-2">
+            <div onclick="switchToDocument('${d.id}')" class="cursor-pointer min-w-0 flex-1">
+              <div class="font-bold text-xs truncate flex items-center gap-1.5">
+                <i class="fa-solid fa-file-signature text-indigo-500"></i>
+                <span>${d.title}</span>
+              </div>
+              <div class="text-[10px] text-slate-400 mt-1">
+                ${Object.keys(d.zones || {}).length} Khung vẽ • Cập nhật: ${new Date(d.updatedAt || Date.now()).toLocaleString('vi-VN')}
+              </div>
+            </div>
+            <div class="flex items-center gap-1">
+              <button type="button" onclick="switchToDocument('${d.id}')" class="px-2.5 py-1 rounded bg-indigo-600 text-white text-[11px] font-semibold">Mở</button>
+              <button type="button" onclick="deleteDocumentById('${d.id}')" class="p-1.5 rounded hover:bg-rose-500/10 text-rose-500 text-xs" title="Xóa tệp">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        `).join('');
+      }
+      openModal('modal-doc-dashboard');
+    }
+
+    function renderSidebarFilesList() {
+      const list = document.getElementById('sidebar-files-list');
+      if (!list) return;
+      const docs = Object.values(appState.documents);
+      list.innerHTML = docs.map((d) => `
+        <button type="button" onclick="switchToDocument('${d.id}')" class="w-full text-left px-2.5 py-2 rounded-lg text-xs flex items-center justify-between transition ${d.id === appState.currentDocId ? 'bg-indigo-600 text-white font-semibold' : 'hover:bg-slate-200/60 dark:hover:bg-slate-800'}">
+          <span class="truncate"><i class="fa-regular fa-file-lines mr-1.5"></i>${d.title}</span>
+          <span class="text-[10px] opacity-75 ml-1">${Object.keys(d.zones || {}).length}L</span>
+        </button>
+      `).join('');
+    }
+
+    function switchToDocument(docId) {
+      saveCurrentDocumentNow();
+      const target = appState.documents[docId];
+      if (target) {
+        loadDocumentIntoWorkspace(target);
+        closeModal('modal-doc-dashboard');
+        showToast(`Đã mở tài liệu: ${target.title}`);
+      }
+    }
+
+    function createNewDocument(templateType = 'blank') {
+      saveCurrentDocumentNow();
+      const newId = `doc_${Date.now()}`;
+      const preset = buildTemplateDocument(newId, templateType);
+      appState.documents[newId] = preset;
+      loadDocumentIntoWorkspace(preset);
+      saveCurrentDocumentNow();
+      closeModal('modal-doc-dashboard');
+      showToast(`Đã tạo tài liệu mới: ${preset.title}`, 'success');
+    }
+
+    function duplicateCurrentDocument() {
+      saveCurrentDocumentNow();
+      const copy = buildCurrentDocumentPayload();
+      copy.id = `doc_${Date.now()}`;
+      copy.title = `${copy.title} (Bản sao)`;
+      copy.updatedAt = new Date().toISOString();
+      appState.documents[copy.id] = copy;
+      loadDocumentIntoWorkspace(copy);
+      saveCurrentDocumentNow();
+      showToast(`Đã nhân bản thành: ${copy.title}`, 'success');
+    }
+
+    function deleteDocumentById(docId) {
+      if (Object.keys(appState.documents).length <= 1) {
+        showToast('Cần giữ lại ít nhất 1 tài liệu trong không gian làm việc', 'warn');
+        return;
+      }
+      delete appState.documents[docId];
+      safeLocalSet('docucanvas_docs_map', appState.documents);
+      if (appState.currentDocId === docId) {
+        const nextDoc = Object.values(appState.documents)[0];
+        loadDocumentIntoWorkspace(nextDoc);
+      }
+      openDocDashboardModal();
+      showToast('Đã xóa tài liệu');
+    }
+
+    // --- Version History (Snapshots) ---
+    function openVersionHistoryModal() {
+      renderVersionHistoryList();
+      openModal('modal-version-history');
+    }
+
+    function createManualSnapshot() {
+      const labelInput = document.getElementById('snapshot-label-input');
+      const label = (labelInput && labelInput.value.trim()) || `Snapshot lúc ${new Date().toLocaleTimeString('vi-VN')}`;
+      const doc = appState.documents[appState.currentDocId] || buildCurrentDocumentPayload();
+      doc.versions = doc.versions || [];
+      doc.versions.unshift({
+        versionId: `ver_${Date.now()}`,
+        label,
+        timestamp: new Date().toISOString(),
+        htmlContent: serializeCleanEditorHTML(),
+        zones: JSON.parse(JSON.stringify(zonesMap))
+      });
+      appState.documents[appState.currentDocId] = doc;
+      if (labelInput) labelInput.value = '';
+      saveCurrentDocumentNow();
+      renderVersionHistoryList();
+      showToast(`Đã lưu phiên bản: ${label}`, 'success');
+    }
+
+    function renderVersionHistoryList() {
+      const list = document.getElementById('version-history-list');
+      if (!list) return;
+      const doc = appState.documents[appState.currentDocId];
+      const versions = (doc && doc.versions) || [];
+      if (!versions.length) {
+        list.innerHTML = `<div class="text-xs text-slate-400 italic py-3">Chưa có bản lưu Snapshot nào cho tài liệu này.</div>`;
+        return;
+      }
+      list.innerHTML = versions.map((v) => `
+        <div class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <div>
+            <div class="font-bold text-xs">${v.label}</div>
+            <div class="text-[10px] text-slate-400">${new Date(v.timestamp).toLocaleString('vi-VN')} • ${Object.keys(v.zones || {}).length} Khung vẽ</div>
+          </div>
+          <button type="button" onclick="restoreVersionSnapshot('${v.versionId}')" class="px-3 py-1 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-500">
+            Khôi phục
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function restoreVersionSnapshot(versionId) {
+      const doc = appState.documents[appState.currentDocId];
+      if (!doc || !doc.versions) return;
+      const snap = doc.versions.find((v) => v.versionId === versionId);
+      if (!snap) return;
+      doc.htmlContent = snap.htmlContent;
+      doc.zones = JSON.parse(JSON.stringify(snap.zones));
+      loadDocumentIntoWorkspace(doc);
+      closeModal('modal-version-history');
+      showToast(`Đã khôi phục phiên bản: ${snap.label}`, 'success');
+    }
+
+    // --- Export & Import Suite (.pdf, .doc, .html, .md, .txt, .dcanvas) ---
+    function exportDCanvasProject() {
+      closeAllTopDropdowns();
+      const payload = buildCurrentDocumentPayload();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+      const safeName = payload.title.replace(/[^a-zA-Z0-9_\-\u00C0-\u1EF9]/g, '_');
+      if (window.saveAs) {
+        window.saveAs(blob, `${safeName}.dcanvas`);
+      }
+      showToast('Đã xuất dự án gốc (.dcanvas) chứa 100% các lớp vẽ!', 'success');
+    }
+
+    function triggerImportDCanvas() {
+      closeAllTopDropdowns();
+      document.getElementById('input-import-dcanvas').click();
+    }
+
+    function handleImportDCanvasFile(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          parsed.id = parsed.id || `doc_${Date.now()}`;
+          appState.documents[parsed.id] = parsed;
+          loadDocumentIntoWorkspace(parsed);
+          saveCurrentDocumentNow();
+          closeModal('modal-doc-dashboard');
+          showToast(`Đã nhập thành công dự án: ${parsed.title}`, 'success');
+        } catch (err) {
+          showToast('Tệp .dcanvas không hợp lệ', 'warn');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function exportToPDF() {
+      closeAllTopDropdowns();
+      const pageEl = document.getElementById('doc-page');
+      if (!pageEl || !window.html2pdf) {
+        window.print();
+        return;
+      }
+      selectDrawingZone(null);
+      document.querySelectorAll('.drawing-zone').forEach((z) => z.classList.add('zone-clean-view'));
+      showToast('Đang kết xuất PDF đa lớp (Văn bản + Khung vẽ)...');
+
+      const title = (document.getElementById('doc-title-input').value || 'DocuCanvas').trim();
+      const opt = {
+        margin: 0,
+        filename: `${title}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'px', format: [pageEl.offsetWidth, pageEl.offsetHeight], orientation: appState.pageOrientation }
+      };
+
+      window.html2pdf().set(opt).from(pageEl).save().then(() => {
+        if (!appState.cleanZoneBorders) {
+          document.querySelectorAll('.drawing-zone').forEach((z) => z.classList.remove('zone-clean-view'));
+        }
+        showToast('Đã xuất file PDF thành công!', 'success');
+      });
+    }
+
+    function exportToWordDocx() {
+      closeAllTopDropdowns();
+      const title = (document.getElementById('doc-title-input').value || 'DocuCanvas').trim();
+      let bodyHtml = serializeCleanEditorHTML();
+
+      // Append high-res PNG snapshots of all Drawing Zones so Word displays both text and drawings
+      const zones = Object.values(zonesMap);
+      if (zones.length) {
+        bodyHtml += `<hr/><h3>Phụ lục Sơ đồ & Không gian vẽ Đa lớp (${zones.length} vùng vẽ)</h3>`;
+        zones.forEach((z) => {
+          const canvas = document.getElementById(`canvas_${z.id}`);
+          if (canvas) {
+            const dataUrl = canvas.toDataURL('image/png');
+            bodyHtml += `<p><strong>${z.name} (${formatLayerName(z.layerMode)}):</strong></p><p><img src="${dataUrl}" width="${z.width}" height="${z.height}" /></p>`;
+          }
+        });
+      }
+
+      const wordDocument = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head><meta charset='utf-8'><title>${title}</title></head>
+        <body style="font-family: 'Inter', Arial, sans-serif; font-size: 11pt; line-height: 1.5;">${bodyHtml}</body>
+        </html>`;
+      const blob = new Blob(['\ufeff', wordDocument], { type: 'application/msword;charset=utf-8' });
+      if (window.saveAs) window.saveAs(blob, `${title}.doc`);
+      showToast('Đã xuất tệp Microsoft Word (.doc) kèm hình vẽ!', 'success');
+    }
+
+    function exportToStandaloneHTML() {
+      closeAllTopDropdowns();
+      const title = (document.getElementById('doc-title-input').value || 'DocuCanvas').trim();
+      let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:Inter,sans-serif;max-width:794px;margin:40px auto;padding:48px;border:1px solid #cbd5e1;line-height:1.6}</style></head><body>`;
+      html += serializeCleanEditorHTML();
+      Object.values(zonesMap).forEach((z) => {
+        const c = document.getElementById(`canvas_${z.id}`);
+        if (c) {
+          html += `<figure><figcaption><strong>${z.name} (${formatLayerName(z.layerMode)})</strong></figcaption><img src="${c.toDataURL('image/png')}" style="max-width:100%;border:1px solid #e2e8f0;border-radius:6px"/></figure>`;
+        }
+      });
+      html += `</body></html>`;
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      if (window.saveAs) window.saveAs(blob, `${title}.html`);
+      showToast('Đã xuất tệp HTML độc lập (.html)!', 'success');
+    }
+
+    function exportToMarkdown() {
+      closeAllTopDropdowns();
+      const title = (document.getElementById('doc-title-input').value || 'DocuCanvas').trim();
+      const editor = document.getElementById('editor-content');
+      const md = `# ${title}\n\n${editor ? editor.innerText : ''}`;
+      const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+      if (window.saveAs) window.saveAs(blob, `${title}.md`);
+      showToast('Đã xuất tệp Markdown (.md)!', 'success');
+    }
+
+    function exportToPlainText() {
+      closeAllTopDropdowns();
+      const title = (document.getElementById('doc-title-input').value || 'DocuCanvas').trim();
+      const editor = document.getElementById('editor-content');
+      const blob = new Blob([editor ? editor.innerText : ''], { type: 'text/plain;charset=utf-8' });
+      if (window.saveAs) window.saveAs(blob, `${title}.txt`);
+      showToast('Đã xuất tệp Văn bản thuần (.txt)!', 'success');
+    }
+
+    function printDocument() {
+      closeAllTopDropdowns();
+      window.print();
+    }
+
+    /* ============================================================================
+     * ACCOUNT, FIREBASE CLOUD PERSISTENCE & DEPLOY GUIDE MODALS
+     * ============================================================================ */
+
+    function openAccountModal() {
+      openModal('modal-account');
+    }
+
+    function openCloudSetupModal() {
+      const savedCfg = safeLocalGet('docucanvas_firebase_config', null);
+      if (savedCfg) {
+        document.getElementById('firebase-config-textarea').value = JSON.stringify(savedCfg, null, 2);
+      }
+      openModal('modal-cloud-setup');
+    }
+
+    function openDeployGuideModal() {
+      closeModal('modal-cloud-setup');
+      openModal('modal-deploy-guide');
+    }
+
+    function saveLocalProfile() {
+      const name = document.getElementById('auth-name-input').value.trim() || 'Minh Ngọc';
+      const email = document.getElementById('auth-email-input').value.trim() || 'minhngoc@docucanvas.local';
+      appState.userProfile = { name, email, mode: appState.firebaseConnected ? 'cloud' : 'local' };
+      safeLocalSet('docucanvas_user_profile', appState.userProfile);
+      updateUserProfileUI();
+      closeModal('modal-account');
+      showToast(`Xin chào, ${name}! Đã cập nhật thông tin tài khoản.`, 'success');
+    }
+
+    function updateUserProfileUI() {
+      const { name, email, mode } = appState.userProfile;
+      const initials = name.split(/\s+/).map((w) => w[0]).join('').substring(0, 2).toUpperCase() || 'DC';
+      document.getElementById('user-avatar-badge').textContent = initials;
+      document.getElementById('user-name-label').textContent = name;
+      document.getElementById('modal-user-avatar').textContent = initials;
+      document.getElementById('modal-user-name').textContent = name;
+      document.getElementById('modal-user-email').textContent = email;
+      document.getElementById('modal-auth-mode-badge').textContent = mode === 'cloud'
+        ? 'Chế độ: Đã kết nối Firebase Cloud'
+        : 'Chế độ: Tài khoản Local (Offline-First)';
+    }
+
+    function connectFirebaseCloud() {
+      const raw = document.getElementById('firebase-config-textarea').value.trim();
+      if (!raw) {
+        showToast('Vui lòng dán đối tượng JSON firebaseConfig vào ô cấu hình', 'warn');
+        return;
+      }
+      try {
+        const normalized = raw.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?\s*:/g, '"$2":');
+        const cfg = JSON.parse(normalized);
+        if (!cfg.apiKey || !cfg.projectId) {
+          showToast('Cấu hình thiếu apiKey hoặc projectId', 'warn');
+          return;
+        }
+        if (window.firebase) {
+          if (!window.firebase.apps.length) {
+            window.firebase.initializeApp(cfg);
+          }
+          appState.firestoreDb = window.firebase.firestore();
+          appState.firebaseAuth = window.firebase.auth();
+          appState.firebaseConnected = true;
+          safeLocalSet('docucanvas_firebase_config', cfg);
+          document.getElementById('storage-engine-indicator').textContent = `Engine: Firebase Firestore (${cfg.projectId})`;
+          saveCurrentDocumentNow();
+          closeModal('modal-cloud-setup');
+          showToast(`Đã kết nối thành công tới Firebase Project: ${cfg.projectId}!`, 'success');
+        }
+      } catch (err) {
+        showToast('Định dạng JSON firebaseConfig chưa hợp lệ. Hãy kiểm tra dấu ngoặc kép.', 'warn');
+      }
+    }
+
+    function disconnectFirebaseCloud() {
+      appState.firebaseConnected = false;
+      appState.firestoreDb = null;
+      document.getElementById('storage-engine-indicator').textContent = 'Engine: IndexedDB + LocalStorage';
+      closeModal('modal-cloud-setup');
+      showToast('Đã chuyển về chế độ lưu trữ Local Offline (IndexedDB)');
+    }
+
+    async function signInWithFirebaseGoogle() {
+      if (!appState.firebaseConnected || !appState.firebaseAuth) {
+        closeModal('modal-account');
+        openCloudSetupModal();
+        showToast('Hãy dán Firebase Config trước khi sử dụng Google Sign-In', 'info');
+        return;
+      }
+      try {
+        const provider = new window.firebase.auth.GoogleAuthProvider();
+        const result = await appState.firebaseAuth.signInWithPopup(provider);
+        if (result && result.user) {
+          appState.userProfile = {
+            name: result.user.displayName || 'Google User',
+            email: result.user.email || '',
+            mode: 'cloud'
+          };
+          updateUserProfileUI();
+          closeModal('modal-account');
+          showToast(`Đăng nhập Google thành công: ${appState.userProfile.name}`, 'success');
+        }
+      } catch (err) {
+        showToast('Không thể mở cửa sổ Google Sign-In trong môi trường hiện tại', 'warn');
+      }
+    }
+
+    /* ============================================================================
+     * INITIAL SAMPLE DOCUMENT & 3-LAYER DEMO ZONES
+     * ============================================================================ */
+
+    function buildTemplateDocument(docId, type) {
+      if (type === 'blank') {
+        return {
+          id: docId,
+          title: 'Tài liệu Không gian vẽ mới',
+          starred: false,
+          updatedAt: new Date().toISOString(),
+          pageOrientation: 'portrait',
+          pageMargin: '64px',
+          pageBgColor: '#ffffff',
+          htmlContent: `<h1>Tiêu đề Tài liệu Mới</h1><p>Bắt đầu soạn thảo văn bản hoặc nhấp nút <strong>Tạo Không Gian Vẽ</strong> trên thanh công cụ để kéo tạo khung vẽ trực tiếp lên trang giấy.</p>`,
+          zones: {
+            'zone_blank_1': {
+              id: 'zone_blank_1',
+              name: 'Zone #1',
+              x: 90,
+              y: 190,
+              width: 580,
+              height: 240,
+              layerMode: 'overlay',
+              clickThrough: false,
+              visible: true,
+              locked: false,
+              zoneOpacity: 1.0,
+              bgColor: 'transparent',
+              viewport: { scale: 1.0, offsetX: 0, offsetY: 0 },
+              commands: [
+                { tool: 'rect', shapeMode: 'both', strokeColor: '#4f46e5', fillColor: 'rgba(79,70,229,0.08)', strokeWidth: 3, opacity: 1, strokeStyle: 'solid', points: [{ x: 30, y: 30 }, { x: 240, y: 140 }] },
+                { tool: 'text', text: 'Khung vẽ tự do #1', strokeColor: '#4f46e5', strokeWidth: 4, opacity: 1, points: [{ x: 52, y: 90 }] }
+              ],
+              redoStack: []
+            }
+          },
+          versions: []
+        };
+      }
+
+      if (type === 'study') {
+        return {
+          id: docId,
+          title: 'Sổ tay Giải tích & Lý thuyết Đồ thị',
+          starred: true,
+          updatedAt: new Date().toISOString(),
+          pageOrientation: 'portrait',
+          pageMargin: '64px',
+          pageBgColor: '#ffffff',
+          htmlContent: `
+            <h1>Sổ tay Thuật toán & Biến đổi Tuyến tính 2D</h1>
+            <h2>1. Phép chiếu Tọa độ Màn hình sang Tọa độ Thế giới (Inverse Matrix)</h2>
+            <p>Khi người dùng thực hiện thao tác <strong>Zoom</strong> với hệ số tỉ lệ <em>s</em> và dịch chuyển vùng nhìn <strong>Pan</strong> theo vector <em>(tx, ty)</em> bên trong Không gian vẽ, mọi tọa độ chuột được ánh xạ chuẩn xác qua công thức nghịch đảo:</p>
+            <pre>worldX = (screenX - offsetX) / scale;\nworldY = (screenY - offsetY) / scale;</pre>
+            <h2>2. Danh sách kiểm tra cài đặt Engine</h2>
+            <p>Các thành phần cốt lõi đã được kiểm thử:</p>
+          `,
+          zones: {},
+          versions: []
+        };
+      }
+
+      // Default rich 3-Layer Architecture Showcase Document
+      return {
+        id: docId,
+        title: 'Kiến trúc Hệ thống & Thiết kế Đa Lớp — DocuCanvas Studio',
+        starred: true,
+        updatedAt: new Date().toISOString(),
+        pageOrientation: 'portrait',
+        pageMargin: '64px',
+        pageBgColor: '#ffffff',
+        htmlContent: `
+          <h1>Kiến trúc Trình Soạn Thảo Đa Lớp — DocuCanvas Studio</h1>
+          <p>Chào mừng bạn đến với <strong>DocuCanvas Studio</strong> — nền tảng soạn thảo văn bản kết hợp <strong>Không gian vẽ trực tiếp đa lớp (Interactive Multi-Layer Drawing Zones)</strong> ngay trên trang giấy A4. Bạn có thể vừa soạn thảo văn bản như Google Docs, vừa nhấp nút <strong>"Tạo Không Gian Vẽ"</strong> để kéo ra bất kỳ vùng vẽ nào trên tài liệu.</p>
+
+          <h2>1. Tương tác 3 Lớp Hiển thị (3 Layer Modes) với Văn bản</h2>
+          <p>Đoạn văn bản này đang hiển thị sắc nét đè lên <strong>Zone #1 (Lớp 2 — Dưới văn bản / Behind Text)</strong>. Nhờ cơ chế nền đoạn văn trong suốt, hình vẽ minh họa ở tầng dưới đóng vai trò như một sơ đồ chìm hoặc khung trang trí watermark mà không hề che khuất chữ viết.</p>
+
+          <table class="doc-table">
+            <tbody>
+              <tr>
+                <th style="background-color:#e0e7ff">Chế độ Lớp (Layer Mode)</th>
+                <th style="background-color:#e0e7ff">Cơ chế Định vị DOM / CSS</th>
+                <th style="background-color:#e0e7ff">Ứng dụng Thực tế</th>
+              </tr>
+              <tr>
+                <td><strong>Lớp 1: Trên văn bản (Overlay)</strong></td>
+                <td><code>position: absolute; z-index: 30</code></td>
+                <td>Khoanh vùng chú thích, vẽ mũi tên chỉ dẫn, bút dạ quang tô sáng xuyên thấu đè lên bảng biểu.</td>
+              </tr>
+              <tr>
+                <td><strong>Lớp 2: Dưới văn bản (Underlay)</strong></td>
+                <td><code>position: absolute; z-index: 10</code></td>
+                <td>Vẽ sơ đồ nền, mindmap chìm, đóng dấu watermark phía sau đoạn văn.</td>
+              </tr>
+              <tr>
+                <td><strong>Lớp 3: Ngang văn bản (Inline)</strong></td>
+                <td><code>Break Text</code> hoặc <code>float: left/right</code></td>
+                <td>Chữ tự động chảy bao quanh khung vẽ hoặc ngắt dòng trên/dưới, không bao giờ đè lên hình vẽ.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2>2. Minh họa Lớp 3 — Văn bản Tự động Bao quanh Khung vẽ (Wrap Text)</h2>
+          <p>Ngay bên phải đoạn văn này là <strong>Zone #3 (Lớp 3C — Bao quanh chữ bên Phải)</strong>. Khi một Không gian vẽ được chuyển sang chế độ <em>Ngang văn bản (Bao quanh 2 bên hoặc Ngắt dòng)</em>, toàn bộ dòng chảy văn bản của trang tài liệu sẽ tự động dàn trang bao quanh khung vẽ mà tuyệt đối không trùng hay đè lên vùng vẽ. Bạn có thể dùng con lăn chuột <strong>Ctrl/Alt + Scroll</strong> ngay bên trong khung vẽ để phóng to <strong>Zoom (0.25x – 5.0x)</strong> hoặc giữ phím <strong>Spacebar + Kéo chuột</strong> để trượt vùng nhìn vô cực.</p>
+
+          <h3>Danh sách kiểm tra nhanh tính năng</h3>
+          <div class="my-2 space-y-1.5 doc-checklist">
+            <label class="flex items-center gap-2 cursor-pointer select-text">
+              <input type="checkbox" checked onchange="this.nextElementSibling.classList.toggle('line-through', this.checked); this.nextElementSibling.classList.toggle('text-slate-400', this.checked);" class="w-4 h-4 rounded text-indigo-600" />
+              <span class="line-through text-slate-400">Khởi tạo Không gian vẽ bằng thao tác Nhấp & Kéo trực tiếp trên trang A4</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer select-text">
+              <input type="checkbox" checked onchange="this.nextElementSibling.classList.toggle('line-through', this.checked); this.nextElementSibling.classList.toggle('text-slate-400', this.checked);" class="w-4 h-4 rounded text-indigo-600" />
+              <span class="line-through text-slate-400">Chuyển đổi linh hoạt giữa 3 Lớp (Overlay, Behind Text, Inline Break/Wrap)</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer select-text">
+              <input type="checkbox" onchange="this.nextElementSibling.classList.toggle('line-through', this.checked); this.nextElementSibling.classList.toggle('text-slate-400', this.checked);" class="w-4 h-4 rounded text-indigo-600" />
+              <span>Thử nghiệm xuất dự án gốc (.dcanvas) và xuất tài liệu PDF chuẩn đa lớp</span>
+            </label>
+          </div>
+        `,
+        zones: {
+          'zone_demo_underlay': {
+            id: 'zone_demo_underlay',
+            name: 'Zone #1 (Nền chìm)',
+            x: 64,
+            y: 155,
+            width: 660,
+            height: 115,
+            layerMode: 'underlay',
+            clickThrough: false,
+            visible: true,
+            locked: false,
+            zoneOpacity: 0.85,
+            bgColor: 'transparent',
+            viewport: { scale: 1.0, offsetX: 0, offsetY: 0 },
+            commands: [
+              {
+                tool: 'rect',
+                shapeMode: 'both',
+                strokeColor: '#06b6d4',
+                fillColor: 'rgba(6, 182, 212, 0.08)',
+                strokeWidth: 2,
+                opacity: 0.7,
+                strokeStyle: 'dashed',
+                points: [{ x: 8, y: 8 }, { x: 645, y: 104 }]
+              },
+              {
+                tool: 'ellipse',
+                shapeMode: 'fill',
+                strokeColor: '#7c3aed',
+                fillColor: 'rgba(124, 58, 237, 0.12)',
+                strokeWidth: 2,
+                opacity: 0.65,
+                strokeStyle: 'solid',
+                points: [{ x: 460, y: 12 }, { x: 635, y: 98 }]
+              },
+              {
+                tool: 'text',
+                text: 'LAYER 2: WATERMARK SƠ ĐỒ DƯỚI CHỮ',
+                strokeColor: 'rgba(79, 70, 229, 0.25)',
+                strokeWidth: 4,
+                opacity: 0.85,
+                points: [{ x: 310, y: 95 }]
+              }
+            ],
+            redoStack: []
+          },
+          'zone_demo_overlay': {
+            id: 'zone_demo_overlay',
+            name: 'Zone #2 (Chú thích đè chữ)',
+            x: 420,
+            y: 280,
+            width: 305,
+            height: 150,
+            layerMode: 'overlay',
+            clickThrough: false,
+            visible: true,
+            locked: false,
+            zoneOpacity: 1.0,
+            bgColor: 'transparent',
+            viewport: { scale: 1.0, offsetX: 0, offsetY: 0 },
+            commands: [
+              {
+                tool: 'marker',
+                shapeMode: 'stroke',
+                strokeColor: '#facc15',
+                fillColor: '#facc15',
+                strokeWidth: 22,
+                opacity: 0.4,
+                strokeStyle: 'solid',
+                points: [{ x: 20, y: 68 }, { x: 140, y: 68 }, { x: 245, y: 68 }]
+              },
+              {
+                tool: 'arrow',
+                shapeMode: 'stroke',
+                strokeColor: '#ef4444',
+                fillColor: '#ef4444',
+                strokeWidth: 3,
+                opacity: 0.95,
+                strokeStyle: 'solid',
+                points: [{ x: 265, y: 24 }, { x: 175, y: 58 }]
+              },
+              {
+                tool: 'text',
+                text: 'Lớp 1: Ghi chú đè lên bảng!',
+                strokeColor: '#dc2626',
+                strokeWidth: 3,
+                opacity: 0.95,
+                points: [{ x: 85, y: 22 }]
+              }
+            ],
+            redoStack: []
+          },
+          'zone_demo_inline': {
+            id: 'zone_demo_inline',
+            name: 'Zone #3 (Bao quanh chữ)',
+            x: 380,
+            y: 520,
+            width: 265,
+            height: 175,
+            layerMode: 'inline-wrap-right',
+            clickThrough: false,
+            visible: true,
+            locked: false,
+            zoneOpacity: 1.0,
+            bgColor: 'rgba(248, 250, 252, 0.9)',
+            viewport: { scale: 1.0, offsetX: 0, offsetY: 0 },
+            commands: [
+              {
+                tool: 'rect',
+                shapeMode: 'both',
+                strokeColor: '#4f46e5',
+                fillColor: 'rgba(79, 70, 229, 0.10)',
+                strokeWidth: 2,
+                opacity: 1,
+                strokeStyle: 'solid',
+                points: [{ x: 16, y: 20 }, { x: 115, y: 78 }]
+              },
+              {
+                tool: 'diamond',
+                shapeMode: 'both',
+                strokeColor: '#059669',
+                fillColor: 'rgba(16, 185, 129, 0.14)',
+                strokeWidth: 2,
+                opacity: 1,
+                strokeStyle: 'solid',
+                points: [{ x: 155, y: 80 }, { x: 248, y: 152 }]
+              },
+              {
+                tool: 'arrow',
+                shapeMode: 'stroke',
+                strokeColor: '#7c3aed',
+                fillColor: '#7c3aed',
+                strokeWidth: 3,
+                opacity: 1,
+                strokeStyle: 'solid',
+                points: [{ x: 116, y: 52 }, { x: 192, y: 82 }]
+              },
+              {
+                tool: 'text',
+                text: 'Client UI',
+                strokeColor: '#312e81',
+                strokeWidth: 3,
+                opacity: 1,
+                points: [{ x: 35, y: 54 }]
+              },
+              {
+                tool: 'text',
+                text: 'Cloud DB',
+                strokeColor: '#065f46',
+                strokeWidth: 3,
+                opacity: 1,
+                points: [{ x: 175, y: 121 }]
+              }
+            ],
+            redoStack: []
+          }
+        },
+        versions: [
+          {
+            versionId: 'ver_init_01',
+            label: 'Khởi tạo Kiến trúc 3 Lớp gốc (v1.0)',
+            timestamp: new Date().toISOString(),
+            htmlContent: '<h1>Kiến trúc Trình Soạn Thảo Đa Lớp — DocuCanvas Studio</h1><p>Phiên bản khởi tạo ban đầu.</p>',
+            zones: {}
+          }
+        ]
+      };
+    }
+
+    // --- Application Bootstrap on Window Load ---
+    window.addEventListener('DOMContentLoaded', async () => {
+      await initIndexedDB();
+
+      // Restore Theme & Dark mode
+      const savedDark = safeLocalGet('docucanvas_dark', false);
+      if (savedDark) {
+        document.documentElement.classList.add('dark');
+        const icon = document.getElementById('dark-mode-icon');
+        if (icon) icon.className = 'fa-solid fa-sun text-amber-400';
+      }
+      const savedTheme = safeLocalGet('docucanvas_theme', 'purple');
+      document.body.setAttribute('data-theme', savedTheme);
+
+      // Restore User Profile
+      const savedProfile = safeLocalGet('docucanvas_user_profile', null);
+      if (savedProfile) {
+        appState.userProfile = savedProfile;
+      }
+      updateUserProfileUI();
+
+      // Load Saved Documents or Initialize Default Showcase Document
+      const savedDocs = safeLocalGet('docucanvas_docs_map', null);
+      const savedActiveId = safeLocalGet('docucanvas_active_doc_id', 'doc_default_01');
+
+      if (savedDocs && Object.keys(savedDocs).length > 0) {
+        appState.documents = savedDocs;
+        const initialDoc = appState.documents[savedActiveId] || Object.values(appState.documents)[0];
+        loadDocumentIntoWorkspace(initialDoc);
+      } else {
+        const defaultDoc = buildTemplateDocument('doc_default_01', 'architecture');
+        appState.documents[defaultDoc.id] = defaultDoc;
+        loadDocumentIntoWorkspace(defaultDoc);
+        saveCurrentDocumentNow();
+      }
+
+      initGlobalStageEvents();
+    });
+  </script>
+</body>
+</html>
