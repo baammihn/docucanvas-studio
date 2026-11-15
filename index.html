@@ -342,6 +342,104 @@
       box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
     }
 
+    /* Smart Tilde (~...~) Inline Mathematical & Variable Formatting */
+    .smart-tilde-expr {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 1px;
+      padding: 0 4px;
+      margin: 0 1px;
+      border-radius: 5px;
+      background: rgba(79, 70, 229, 0.06);
+      border: 1px solid rgba(79, 70, 229, 0.18);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: all;
+    }
+    .smart-tilde-expr:hover,
+    .smart-tilde-expr.doc-selected-node {
+      background: rgba(79, 70, 229, 0.14);
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 2px var(--accent-soft);
+    }
+    .smart-tilde-expr .tilde-var {
+      font-family: 'Merriweather', 'Playfair Display', 'Times New Roman', serif;
+      font-style: italic;
+      font-weight: 700;
+      color: #6d28d9;
+      padding: 0 1px;
+    }
+    .smart-tilde-expr .tilde-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      font-size: 0.95em;
+      color: #1d4ed8;
+    }
+    .smart-tilde-expr .tilde-op {
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      color: #0f766e;
+      padding: 0 2px;
+    }
+    .smart-tilde-expr .tilde-text {
+      font-family: inherit;
+      font-style: normal;
+      font-weight: 400;
+      color: inherit;
+    }
+    .smart-tilde-expr sup.tilde-sup {
+      font-size: 0.72em;
+      line-height: 0;
+      vertical-align: super;
+      font-weight: 600;
+      color: #4338ca;
+      margin-left: 1px;
+    }
+    .smart-tilde-expr sub.tilde-sub {
+      font-size: 0.72em;
+      line-height: 0;
+      vertical-align: sub;
+      font-weight: 600;
+      color: #0369a1;
+      margin-left: 1px;
+    }
+    .smart-tilde-expr .tilde-sqrt {
+      display: inline-flex;
+      align-items: baseline;
+      font-weight: 700;
+      color: #0f766e;
+    }
+    .smart-tilde-expr .tilde-sqrt-body {
+      border-top: 1.5px solid #0f766e;
+      padding: 0 2px;
+      margin-left: 1px;
+    }
+    .raw-tilde-expr {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.92em;
+      padding: 0 3px;
+      border-radius: 4px;
+      background: rgba(148, 163, 184, 0.15);
+      border: 1px dashed rgba(100, 116, 139, 0.45);
+      cursor: pointer;
+    }
+
+    /* Home Screen Dashboard & Collection Drag-Drop Styles */
+    .doc-card-preview {
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    html.dark .doc-card-preview {
+      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    }
+    .collection-drop-active {
+      outline: 2px dashed var(--accent-primary) !important;
+      background-color: var(--accent-soft) !important;
+      transform: scale(1.02);
+    }
+
     /* Selected Inserted Elements inside Editor */
     #editor-content hr {
       border: none;
@@ -709,12 +807,274 @@
   <!-- Toast Notification Container -->
   <div id="toast-container" class="fixed bottom-10 right-5 z-[9990] flex flex-col gap-2 pointer-events-none"></div>
 
+  <!-- ==================== SCREEN 1: GOOGLE DOCS-STYLE HOME SCREEN DASHBOARD ==================== -->
+  <div id="home-dashboard-view" class="flex-1 flex flex-col min-h-0 overflow-hidden bg-slate-100/80 dark:bg-slate-950 z-40">
+    <!-- Top App Bar (Google Docs Home Header) -->
+    <header class="glass-bar border-b px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4 shrink-0">
+      <!-- Brand Logo & Name -->
+      <div class="flex items-center gap-3 shrink-0">
+        <div class="w-10 h-10 rounded-xl accent-gradient-bg flex items-center justify-center text-white shadow-md">
+          <i class="fa-solid fa-pen-ruler text-lg"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-display font-extrabold text-base sm:text-lg tracking-tight">DocuCanvas Studio</span>
+            <span class="hidden sm:inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">Workspace 3.0</span>
+          </div>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">Trình soạn thảo văn bản đa lớp, Tập tài liệu &amp; Bộ gõ Toán học thông minh ~...~</p>
+        </div>
+      </div>
+
+      <!-- Center Global Omnibox Search -->
+      <div class="flex-1 max-w-xl relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+        <input
+          id="home-omnibox-search"
+          type="text"
+          oninput="renderHomeDashboard()"
+          placeholder="Tìm kiếm theo tên file, nội dung văn bản bên trong hoặc tên Tập tài liệu..."
+          class="w-full pl-10 pr-9 py-2 rounded-full text-xs sm:text-sm bg-slate-200/75 dark:bg-slate-800/90 border border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition shadow-inner"
+        />
+        <button type="button" onclick="clearHomeSearch()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs" title="Xóa tìm kiếm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Right Action Controls -->
+      <div class="flex items-center gap-2 shrink-0">
+        <button type="button" onclick="triggerImportDCanvas()" class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-500 transition" title="Nhập dự án .dcanvas từ máy tính">
+          <i class="fa-solid fa-file-import text-teal-500"></i>
+          <span class="hidden md:inline">Nhập file</span>
+        </button>
+        <button type="button" onclick="openCloudSetupModal()" class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-cyan-500 transition" title="Cấu hình Firebase Cloud">
+          <i class="fa-solid fa-cloud text-cyan-500"></i>
+          <span class="hidden md:inline">Cloud DB</span>
+        </button>
+        <button type="button" onclick="toggleDarkMode()" class="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-center hover:border-indigo-500 transition" title="Chuyển chế độ Sáng / Tối">
+          <i class="fa-solid fa-circle-half-stroke text-slate-600 dark:text-amber-400"></i>
+        </button>
+        <button type="button" onclick="openAccountModal()" class="flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition shadow-xs">
+          <div id="home-user-avatar" class="w-6 h-6 rounded-full accent-gradient-bg text-white text-xs font-bold flex items-center justify-center">MN</div>
+          <span id="home-user-name" class="text-xs font-semibold hidden sm:inline">Minh Ngọc</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Body of Home Dashboard (Left Collections/Trash Sidebar + Right Content) -->
+    <div class="flex-1 flex min-h-0 overflow-hidden">
+      <!-- Left Navigation & Collections Sidebar -->
+      <aside class="w-64 glass-bar border-r flex flex-col shrink-0 p-3 space-y-4 overflow-y-auto">
+        <!-- Primary Create CTA -->
+        <button type="button" onclick="createNewDocFromHome('blank')" class="w-full py-2.5 px-4 rounded-xl font-display font-bold text-xs sm:text-sm text-white accent-gradient-bg shadow-md hover:shadow-lg hover:scale-[1.01] transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-plus"></i>
+          <span>Tạo Tài Liệu Mới</span>
+        </button>
+
+        <!-- Primary Navigation Filters -->
+        <div class="space-y-1 text-xs">
+          <button type="button" id="nav-home-all" onclick="setHomeFilter('all')" class="w-full px-3 py-2 rounded-xl font-semibold flex items-center justify-between transition bg-indigo-600 text-white">
+            <span class="flex items-center gap-2"><i class="fa-solid fa-layer-group w-4"></i> Tất cả tài liệu</span>
+            <span id="badge-count-all" class="text-[10px] px-1.5 py-0.5 rounded-full bg-white/20">0</span>
+          </button>
+          <button type="button" id="nav-home-starred" onclick="setHomeFilter('starred')" class="w-full px-3 py-2 rounded-xl font-semibold flex items-center justify-between transition text-slate-700 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800">
+            <span class="flex items-center gap-2"><i class="fa-solid fa-star w-4 text-amber-400"></i> Đánh dấu sao</span>
+            <span id="badge-count-starred" class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700">0</span>
+          </button>
+          <button type="button" id="nav-home-unfiled" onclick="setHomeFilter('unfiled')" class="w-full px-3 py-2 rounded-xl font-semibold flex items-center justify-between transition text-slate-700 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800">
+            <span class="flex items-center gap-2"><i class="fa-regular fa-file-lines w-4 text-slate-400"></i> Chưa phân loại</span>
+            <span id="badge-count-unfiled" class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700">0</span>
+          </button>
+          <button type="button" id="nav-home-trash" onclick="setHomeFilter('trash')" class="w-full px-3 py-2 rounded-xl font-semibold flex items-center justify-between transition text-slate-700 dark:text-slate-300 hover:bg-rose-500/10">
+            <span class="flex items-center gap-2"><i class="fa-solid fa-trash-can w-4 text-rose-500"></i> Thùng rác (30 ngày)</span>
+            <span id="badge-count-trash" class="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold">0</span>
+          </button>
+        </div>
+
+        <div class="border-t border-slate-200 dark:border-slate-700 pt-3 flex-1 flex flex-col min-h-0">
+          <div class="flex items-center justify-between mb-2 px-1">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Tập tài liệu (Collections)</span>
+            <button type="button" onclick="openCollectionModal()" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1" title="Tạo Tập tài liệu mới">
+              <i class="fa-solid fa-folder-plus"></i> + Tạo Tập
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-400 px-1 mb-2">Kéo-thả thẻ file vào Tập bất kỳ bên dưới để phân loại nhanh:</p>
+          <div id="home-collections-sidebar" class="space-y-1 overflow-y-auto flex-1 pr-1"></div>
+        </div>
+
+        <!-- Quick Tilde Guide Card in Home Sidebar -->
+        <div class="p-3 rounded-xl bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-cyan-500/10 border border-indigo-500/20 text-[11px] space-y-1">
+          <div class="font-bold text-indigo-600 dark:text-indigo-400 flex items-center justify-between">
+            <span><i class="fa-solid fa-square-root-variable mr-1"></i>Bộ gõ ~...~ thông minh</span>
+            <button type="button" onclick="openTildeCheatSheetModal()" class="underline text-[10px]">Chi tiết</button>
+          </div>
+          <p class="text-slate-600 dark:text-slate-300 leading-relaxed">
+            Gõ <code>~ 2^5 ~</code> &rarr; <strong>2<sup>5</sup></strong>, <code>~ a_i &lt;= b_i ~</code> &rarr; <strong><em>a</em><sub>i</sub> &le; <em>b</em><sub>i</sub></strong>. Bấm <code>Backspace</code> hoặc <code>[~]</code> để hoàn nguyên.
+          </p>
+        </div>
+      </aside>
+
+      <!-- Right Main Scrollable Content of Home Dashboard -->
+      <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        <!-- Template Gallery Banner (Hidden when inside Trash view) -->
+        <section id="home-template-banner" class="bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h2 class="font-display font-bold text-sm sm:text-base flex items-center gap-2">
+                <i class="fa-solid fa-wand-magic-sparkles text-indigo-500"></i>
+                <span>Bắt đầu tài liệu mới (Start a New Document)</span>
+              </h2>
+              <p class="text-xs text-slate-500">Chọn trang trắng hoặc khởi tạo từ các mẫu tích hợp sẵn Không gian vẽ 3 lớp &amp; bộ gõ toán học ~...~</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <!-- Template 1: Blank Doc (Google Docs Plus style) -->
+            <button type="button" onclick="createNewDocFromHome('blank')" class="group text-left rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-500 bg-white dark:bg-slate-800 p-3 transition shadow-2xs hover:shadow-md flex flex-col justify-between h-36">
+              <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-rose-500 text-white flex items-center justify-center text-xl shadow-sm group-hover:scale-110 transition">
+                <i class="fa-solid fa-plus"></i>
+              </div>
+              <div>
+                <div class="font-bold text-xs sm:text-sm group-hover:text-indigo-600 dark:group-hover:text-indigo-400">+ Tài liệu trống</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Trang A4 chuẩn Google Docs</div>
+              </div>
+            </button>
+
+            <!-- Template 2: 3-Layer Canvas Note -->
+            <button type="button" onclick="createNewDocFromHome('architecture')" class="group text-left rounded-xl border border-slate-200 dark:border-slate-700 hover:border-purple-500 bg-white dark:bg-slate-800 p-3 transition shadow-2xs hover:shadow-md flex flex-col justify-between h-36">
+              <div class="w-11 h-11 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-lg group-hover:scale-110 transition">
+                <i class="fa-solid fa-layer-group"></i>
+              </div>
+              <div>
+                <div class="font-bold text-xs sm:text-sm group-hover:text-purple-600 dark:group-hover:text-purple-400">Ghi chú &amp; Vẽ Sơ đồ 3 Lớp</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Watermark chìm, Highlight &amp; Wrap</div>
+              </div>
+            </button>
+
+            <!-- Template 3: Math & CS Study Sheet with ~...~ -->
+            <button type="button" onclick="createNewDocFromHome('study')" class="group text-left rounded-xl border border-slate-200 dark:border-slate-700 hover:border-cyan-500 bg-white dark:bg-slate-800 p-3 transition shadow-2xs hover:shadow-md flex flex-col justify-between h-36">
+              <div class="w-11 h-11 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center text-lg group-hover:scale-110 transition">
+                <i class="fa-solid fa-square-root-variable"></i>
+              </div>
+              <div>
+                <div class="font-bold text-xs sm:text-sm group-hover:text-cyan-600 dark:group-hover:text-cyan-400">Đề cương Toán - Tin (~...~)</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Mẫu sẵn công thức ~ a_i &lt;= 2^n ~</div>
+              </div>
+            </button>
+
+            <!-- Template 4: Project Report -->
+            <button type="button" onclick="createNewDocFromHome('report')" class="group text-left rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-500 bg-white dark:bg-slate-800 p-3 transition shadow-2xs hover:shadow-md flex flex-col justify-between h-36">
+              <div class="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-lg group-hover:scale-110 transition">
+                <i class="fa-solid fa-table-list"></i>
+              </div>
+              <div>
+                <div class="font-bold text-xs sm:text-sm group-hover:text-emerald-600 dark:group-hover:text-emerald-400">Báo cáo Dự án / Biên bản</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Bảng tiến độ, Checklist &amp; Sơ đồ</div>
+              </div>
+            </button>
+
+            <!-- Template 5: Freeform Illustration -->
+            <button type="button" onclick="createNewDocFromHome('freeform')" class="group text-left rounded-xl border border-slate-200 dark:border-slate-700 hover:border-amber-500 bg-white dark:bg-slate-800 p-3 transition shadow-2xs hover:shadow-md flex flex-col justify-between h-36">
+              <div class="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg group-hover:scale-110 transition">
+                <i class="fa-solid fa-paintbrush"></i>
+              </div>
+              <div>
+                <div class="font-bold text-xs sm:text-sm group-hover:text-amber-600 dark:group-hover:text-amber-400">Trang vẽ Minh họa Tự do</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Khung vẽ lớn toàn trang A4</div>
+              </div>
+            </button>
+          </div>
+        </section>
+
+        <!-- Trash 30-Day Banner (Shown only when in Trash view) -->
+        <section id="home-trash-banner" class="hidden bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center text-base shrink-0">
+              <i class="fa-solid fa-trash-can-arrow-up"></i>
+            </div>
+            <div>
+              <h3 class="font-display font-bold text-sm text-rose-700 dark:text-rose-300">Thùng rác Thông minh — Tự động lưu giữ 30 ngày</h3>
+              <p class="text-xs text-rose-600/90 dark:text-rose-300/80">Các mục trong Thùng rác sẽ tự động bị xóa vĩnh viễn sau 30 ngày kể từ lúc xóa. Khi khôi phục, tài liệu sẽ quay về đúng Tập ban đầu.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="restoreSelectedTrashedDocs()" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs">
+              <i class="fa-solid fa-rotate-left mr-1"></i>Khôi phục mục đã chọn
+            </button>
+            <button type="button" onclick="openEmptyTrashConfirmModal()" class="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-xs">
+              <i class="fa-solid fa-fire mr-1"></i>Dọn sạch Thùng rác ngay
+            </button>
+          </div>
+        </section>
+
+        <!-- Batch Multi-Select Action Bar -->
+        <div id="home-batch-bar" class="hidden bg-indigo-950 text-white rounded-2xl px-4 py-2.5 items-center justify-between gap-3 shadow-lg border border-indigo-500/40">
+          <div class="flex items-center gap-2 text-xs font-semibold">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
+            <span id="home-batch-count-label">Đã chọn 0 tài liệu</span>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button type="button" onclick="openBatchCollectionModal()" class="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold">
+              <i class="fa-solid fa-folder-tree mr-1"></i>Gom vào Tập...
+            </button>
+            <button type="button" onclick="batchMoveSelectedToTrash()" class="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold">
+              <i class="fa-solid fa-trash-can mr-1"></i>Chuyển vào Thùng rác
+            </button>
+            <button type="button" onclick="clearHomeBatchSelection()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs">
+              Bỏ chọn
+            </button>
+          </div>
+        </div>
+
+        <!-- Documents Header, Collection Quick Pills, Sort & Grid/List View Toggle -->
+        <section class="space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5 flex-wrap">
+              <h2 id="home-section-title" class="font-display font-bold text-base sm:text-lg">Tất cả Tài liệu Gần đây</h2>
+              <button id="btn-create-in-collection" type="button" onclick="createNewDocInCurrentCollection()" class="hidden px-3 py-1 rounded-full text-xs font-bold text-white accent-gradient-bg shadow-xs hover:opacity-95">
+                + Tạo file Doc mới ngay trong Tập này
+              </button>
+            </div>
+
+            <div class="flex items-center gap-2 flex-wrap">
+              <button type="button" onclick="selectAllHomeDocs()" class="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-500">
+                <i class="fa-regular fa-square-check mr-1"></i>Chọn nhiều
+              </button>
+              <select id="home-sort-select" onchange="setHomeSortBy(this.value)" class="text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none">
+                <option value="lastOpened">Sắp xếp: Lần mở gần nhất</option>
+                <option value="updated">Sắp xếp: Ngày chỉnh sửa</option>
+                <option value="title">Sắp xếp: Tên A &rarr; Z</option>
+              </select>
+              <div class="flex items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-0.5">
+                <button type="button" id="btn-view-grid" onclick="setHomeViewMode('grid')" class="px-2.5 py-1 rounded-md text-xs bg-indigo-600 text-white" title="Chế độ Lưới thẻ (Grid View)">
+                  <i class="fa-solid fa-grip"></i>
+                </button>
+                <button type="button" id="btn-view-list" onclick="setHomeViewMode('list')" class="px-2.5 py-1 rounded-md text-xs text-slate-500 hover:text-indigo-500" title="Chế độ Danh sách (List View)">
+                  <i class="fa-solid fa-list"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Collection Filter Chips Bar -->
+          <div id="home-collection-chips" class="flex items-center gap-1.5 overflow-x-auto pb-1"></div>
+
+          <!-- Documents Container (Grid or List) -->
+          <div id="home-documents-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SCREEN 2: DOCUMENT EDITOR VIEW ==================== -->
+  <div id="editor-view-container" class="hidden flex-1 flex flex-col min-h-0 overflow-hidden">
+
   <!-- ==================== TOP HEADER & MENU BAR ==================== -->
   <header id="top-header" class="glass-bar border-b px-3 py-1.5 flex items-center justify-between gap-2 z-40 shrink-0">
     <!-- Left: Brand Logo + Document Title + Menu Bar -->
     <div class="flex items-center gap-3 min-w-0">
-      <button id="btn-brand-home" onclick="openDocDashboardModal()" title="Quản lý Tài liệu (Dashboard)" class="w-10 h-10 rounded-xl accent-gradient-bg flex items-center justify-center text-white shadow-md hover:opacity-95 transition shrink-0">
-        <i class="fa-solid fa-pen-ruler text-lg"></i>
+      <button id="btn-brand-home" onclick="navigateToHomeDashboard()" title="Quay về Trang chủ Quản lý Tài liệu (Google Docs Home)" class="px-2.5 h-10 rounded-xl accent-gradient-bg flex items-center gap-2 text-white shadow-md hover:opacity-95 transition shrink-0">
+        <i class="fa-solid fa-house text-sm"></i>
+        <span class="text-xs font-bold hidden sm:inline">Trang chủ</span>
       </button>
 
       <div class="flex flex-col min-w-0">
@@ -1056,6 +1416,28 @@
 
     <div class="h-5 w-px bg-slate-200 dark:bg-slate-700 mx-1 shrink-0"></div>
 
+    <!-- ★ SMART TILDE (~...~) REVERT & CHEAT SHEET CONTROLS ★ -->
+    <button
+      id="btn-revert-tilde"
+      type="button"
+      onclick="toggleSelectedTildeMode()"
+      class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono font-bold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition shrink-0"
+      title="Chuyển cụm ~...~ đang chọn về dạng gốc (~...~) hoặc định dạng lại (Phím tắt: Alt + ~)"
+    >
+      <span>[~]</span>
+      <span class="hidden xl:inline text-[11px] font-sans">Về dạng gốc</span>
+    </button>
+
+    <button
+      id="btn-tilde-cheatsheet"
+      type="button"
+      onclick="openTildeCheatSheetModal()"
+      class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/30 hover:bg-purple-500/20 transition shrink-0"
+      title="Bảng tra cứu cú pháp Ký tự Đặc biệt &amp; Toán học ~...~ kèm bật/tắt tự động"
+    >
+      <span>[~ fx]</span>
+    </button>
+
     <!-- ★ CORE FEATURE CTA: CREATE INTERACTIVE DRAWING ZONE ★ -->
     <button
       id="btn-create-draw-zone"
@@ -1362,6 +1744,8 @@
       <span id="last-saved-time" class="hidden sm:inline">Vừa lưu tự động</span>
     </div>
   </footer>
+
+  </div><!-- /#editor-view-container -->
 
   <!-- Hidden File Input for .dcanvas Import & Local Image Upload -->
   <input id="input-import-dcanvas" type="file" accept=".dcanvas,.json" onchange="handleImportDCanvasFile(event)" class="hidden" />
@@ -1736,6 +2120,245 @@ git push -u origin main</pre>
     </div>
   </div>
 
+  <!-- 12. CREATE / EDIT COLLECTION MODAL -->
+  <div id="modal-collection-editor" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 id="collection-modal-title" class="font-display font-bold text-base"><i class="fa-solid fa-folder-plus text-indigo-500 mr-2"></i>Tạo Tập Tài Liệu Mới (Collection)</h3>
+        <button type="button" onclick="closeModal('modal-collection-editor')" class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <label class="block space-y-1">
+          <span class="font-semibold">Tên Tập tài liệu:</span>
+          <input id="collection-name-input" type="text" placeholder="VD: Giải Tích 1, Lập Trình C++, Đoàn Trường, Dự Án AI..." class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none" />
+        </label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block space-y-1">
+            <span class="font-semibold">Màu sắc nhãn (Color Tag):</span>
+            <select id="collection-color-select" class="w-full px-2.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none">
+              <option value="#4f46e5">Tím Indigo (#4F46E5)</option>
+              <option value="#0891b2">Xanh Cyan (#0891B2)</option>
+              <option value="#7c3aed">Tím Violet (#7C3AED)</option>
+              <option value="#059669">Xanh Ngọc lục bảo (#059669)</option>
+              <option value="#ea580c">Cam Hoàng hôn (#EA580C)</option>
+              <option value="#e11d48">Đỏ Ruby (#E11D48)</option>
+              <option value="#2563eb">Xanh Đại dương (#2563EB)</option>
+            </select>
+          </label>
+          <label class="block space-y-1">
+            <span class="font-semibold">Biểu tượng (Icon):</span>
+            <select id="collection-icon-select" class="w-full px-2.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none">
+              <option value="fa-folder">📁 Thư mục chuẩn</option>
+              <option value="fa-square-root-variable">√ Toán học &amp; Giải tích</option>
+              <option value="fa-code">&lt;/&gt; Lập trình &amp; Thuật toán</option>
+              <option value="fa-microchip">🤖 Dự án AI &amp; Hệ thống</option>
+              <option value="fa-users-gear">🌟 Đoàn Hội &amp; Sự kiện</option>
+              <option value="fa-graduation-cap">🎓 Học tập &amp; Đề cương</option>
+              <option value="fa-book">📚 Tài liệu tham khảo</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="closeModal('modal-collection-editor')" class="px-4 py-2 rounded-lg text-xs border border-slate-200 dark:border-slate-700">Hủy</button>
+        <button type="button" onclick="saveCollectionFromModal()" class="px-4 py-2 rounded-lg text-xs font-semibold text-white accent-gradient-bg">Lưu Tập Tài Liệu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13. DELETE / DISSOLVE COLLECTION MODAL -->
+  <div id="modal-delete-collection" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-display font-bold text-base text-rose-600 dark:text-rose-400"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Giải tán hoặc Xóa Tập Tài Liệu</h3>
+        <button type="button" onclick="closeModal('modal-delete-collection')" class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <p id="delete-collection-desc" class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+        Bạn muốn xử lý các file tài liệu đang nằm bên trong Tập này như thế nào?
+      </p>
+      <div class="space-y-2.5 text-xs">
+        <button type="button" onclick="confirmDissolveCollectionKeepFiles()" class="w-full p-3 rounded-xl border border-indigo-500/40 bg-indigo-500/10 hover:bg-indigo-500/20 text-left transition flex items-center gap-3">
+          <i class="fa-solid fa-folder-open text-lg text-indigo-500 shrink-0"></i>
+          <div>
+            <div class="font-bold text-indigo-700 dark:text-indigo-300">1. Chỉ giải tán Tập (Giữ lại các file bên trong)</div>
+            <div class="text-[11px] text-slate-500">Xóa nhãn Tập này nhưng giữ nguyên 100% các file bên trong và chuyển về mục "Chưa phân loại".</div>
+          </div>
+        </button>
+        <button type="button" onclick="confirmTrashCollectionAndFiles()" class="w-full p-3 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-left transition flex items-center gap-3">
+          <i class="fa-solid fa-trash-can text-lg text-rose-500 shrink-0"></i>
+          <div>
+            <div class="font-bold text-rose-700 dark:text-rose-300">2. Chuyển cả Tập lẫn các file bên trong vào Thùng rác</div>
+            <div class="text-[11px] text-slate-500">Các file bên trong được chuyển vào Thùng rác (lưu giữ 30 ngày và có thể khôi phục bất cứ lúc nào).</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 14. MOVE TO COLLECTION / BATCH GROUPING MODAL -->
+  <div id="modal-move-collection" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-display font-bold text-base"><i class="fa-solid fa-folder-tree text-indigo-500 mr-2"></i>Chuyển File vào Tập Tài Liệu</h3>
+        <button type="button" onclick="closeModal('modal-move-collection')" class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="move-collection-list" class="space-y-1.5 max-h-60 overflow-y-auto text-xs"></div>
+      <div class="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <button type="button" onclick="closeModal('modal-move-collection'); openCollectionModal();" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+          + Tạo Tập tài liệu mới
+        </button>
+        <button type="button" onclick="closeModal('modal-move-collection')" class="px-4 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-700">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 15. RENAME DOCUMENT MODAL -->
+  <div id="modal-rename-doc" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-display font-bold text-sm"><i class="fa-solid fa-pen-to-square text-indigo-500 mr-1.5"></i>Đổi tên Tài liệu</h3>
+        <button type="button" onclick="closeModal('modal-rename-doc')" class="w-7 h-7 rounded hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <input id="rename-doc-input" type="text" class="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none" />
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="closeModal('modal-rename-doc')" class="px-3 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-700">Hủy</button>
+        <button type="button" onclick="confirmRenameDocModal()" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white accent-gradient-bg">Lưu tên mới</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 16. TRASH READ-ONLY PREVIEW & RESTORE MODAL -->
+  <div id="modal-trash-preview" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded bg-rose-500/15 text-rose-600 text-[10px] font-bold uppercase">Xem trước Chỉ đọc (Trong Thùng Rác)</span>
+            <span id="trash-preview-countdown" class="text-[11px] font-mono text-amber-600 font-semibold"></span>
+          </div>
+          <h3 id="trash-preview-title" class="font-display font-bold text-base mt-1">Tiêu đề tài liệu</h3>
+        </div>
+        <button type="button" onclick="closeModal('modal-trash-preview')" class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="trash-preview-body" class="p-6 overflow-y-auto flex-1 prose dark:prose-invert max-w-none text-xs leading-relaxed bg-slate-50 dark:bg-slate-950/50 select-text"></div>
+      <div class="px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
+        <button type="button" onclick="deleteForeverFromPreview()" class="px-3.5 py-2 rounded-xl border border-rose-500/40 text-rose-600 hover:bg-rose-500/10 text-xs font-semibold">
+          <i class="fa-solid fa-trash-can mr-1"></i>Xóa vĩnh viễn
+        </button>
+        <button type="button" onclick="restoreAndOpenFromPreview()" class="px-4 py-2 rounded-xl text-white accent-gradient-bg text-xs font-bold shadow-md">
+          <i class="fa-solid fa-rotate-left mr-1.5"></i>Khôi phục để chỉnh sửa ngay
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 17. SAFE CONFIRM PERMANENT PURGE MODAL -->
+  <div id="modal-confirm-purge" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center gap-3 text-rose-600">
+        <div class="w-10 h-10 rounded-xl bg-rose-500/15 flex items-center justify-center text-lg shrink-0">
+          <i class="fa-solid fa-fire"></i>
+        </div>
+        <div>
+          <h3 class="font-display font-bold text-base">Xác nhận Xóa Vĩnh Viễn</h3>
+          <p id="confirm-purge-desc" class="text-xs text-slate-500">Hành động này không thể hoàn tác sau khi xóa khỏi bộ nhớ.</p>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="closeModal('modal-confirm-purge')" class="px-4 py-2 rounded-lg text-xs border border-slate-200 dark:border-slate-700">Hủy</button>
+        <button type="button" onclick="executeConfirmedPurge()" class="px-4 py-2 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white">Xóa vĩnh viễn</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 18. SMART TILDE (~...~) CHEAT SHEET & SETTINGS MODAL -->
+  <div id="modal-tilde-cheatsheet" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-2xl w-full max-h-[86vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl accent-gradient-bg text-white font-mono font-bold flex items-center justify-center text-sm">~fx</div>
+          <div>
+            <h3 class="font-display font-bold text-base">Bộ Gõ Ký Tự Đặc Biệt, Biến Số &amp; Công Thức Qua Cú Pháp <code>~ ... ~</code></h3>
+            <p class="text-xs text-slate-500">Gõ dấu <code>~</code> mở và dấu <code>~</code> đóng để tự động định dạng toán học chọn lọc hoặc hoàn nguyên 1 chạm</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeModal('modal-tilde-cheatsheet')" class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-4 text-xs">
+        <!-- Toggle Switch for Auto Tilde Parser -->
+        <div class="p-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-between">
+          <div>
+            <div class="font-bold text-indigo-700 dark:text-indigo-300">Tự động chuyển đổi khi gõ dấu <code>~</code> đóng</div>
+            <div class="text-[11px] text-slate-500">Khi đang bật, bạn vẫn có thể bấm <code>Backspace</code> ngay sau khi gõ hoặc nhấn nút <code>[~] Về dạng gốc</code> để giữ dấu <code>~</code> thật.</div>
+          </div>
+          <label class="inline-flex items-center cursor-pointer">
+            <input id="toggle-auto-tilde-checkbox" type="checkbox" checked onchange="toggleAutoTildeSetting(this.checked)" class="w-4 h-4 rounded text-indigo-600" />
+            <span class="ml-2 font-bold text-indigo-600 dark:text-indigo-400">Đang Bật</span>
+          </label>
+        </div>
+
+        <!-- Cheat Sheet Table -->
+        <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-100 dark:bg-slate-800 text-[11px] uppercase text-slate-500">
+                <th class="p-2.5 border-b border-slate-200 dark:border-slate-700">Nhóm Cú Pháp</th>
+                <th class="p-2.5 border-b border-slate-200 dark:border-slate-700">Bạn gõ trong <code>~ ... ~</code></th>
+                <th class="p-2.5 border-b border-slate-200 dark:border-slate-700">Kết quả hiển thị</th>
+                <th class="p-2.5 border-b border-slate-200 dark:border-slate-700 text-right">Thử ngay</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 dark:divide-slate-800 font-mono text-[11.5px]">
+              <tr>
+                <td class="p-2.5 font-sans font-semibold">Lũy thừa / Chỉ số trên</td>
+                <td class="p-2.5"><code>~ 2^5 + x^(n+1) ~</code></td>
+                <td class="p-2.5 font-sans">2<sup>5</sup> + <em>x</em><sup><em>n</em>+1</sup></td>
+                <td class="p-2.5 text-right"><button type="button" onclick="insertSampleTildeExpr('2^5 + x^(n+1)')" class="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 font-sans font-semibold">Chèn</button></td>
+              </tr>
+              <tr>
+                <td class="p-2.5 font-sans font-semibold">Chỉ số dưới &amp; Kép</td>
+                <td class="p-2.5"><code>~ a_i + dp_{i,j} = x_1^2 ~</code></td>
+                <td class="p-2.5 font-sans"><em>a</em><sub><em>i</em></sub> + <em>dp</em><sub><em>i,j</em></sub> = <em>x</em><sub>1</sub><sup>2</sup></td>
+                <td class="p-2.5 text-right"><button type="button" onclick="insertSampleTildeExpr('a_i + dp_{i,j} = x_1^2')" class="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 font-sans font-semibold">Chèn</button></td>
+              </tr>
+              <tr>
+                <td class="p-2.5 font-sans font-semibold">Toán tử &amp; Mũi tên Logic</td>
+                <td class="p-2.5"><code>~ a_i &lt;= b_i &lt;=&gt; x != 0 ~</code></td>
+                <td class="p-2.5 font-sans"><em>a</em><sub><em>i</em></sub> &le; <em>b</em><sub><em>i</em></sub> &hArr; <em>x</em> &ne; 0</td>
+                <td class="p-2.5 text-right"><button type="button" onclick="insertSampleTildeExpr('a_i <= b_i <=> x != 0')" class="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 font-sans font-semibold">Chèn</button></td>
+              </tr>
+              <tr>
+                <td class="p-2.5 font-sans font-semibold">Giải tích, Tập hợp &amp; Hy Lạp</td>
+                <td class="p-2.5"><code>~ forall x in R, sqrt(x^2) &gt;= alpha ~</code></td>
+                <td class="p-2.5 font-sans">&forall; <em>x</em> &isin; <em>R</em>, &radic;(<em>x</em><sup>2</sup>) &ge; &alpha;</td>
+                <td class="p-2.5 text-right"><button type="button" onclick="insertSampleTildeExpr('sample_calculus')" class="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 font-sans font-semibold">Chèn</button></td>
+              </tr>
+              <tr>
+                <td class="p-2.5 font-sans font-semibold">Pha trộn Tiếng Việt tự nhiên</td>
+                <td class="p-2.5"><code>~ với mọi a_i &lt;= 100 thì x^2 &gt;= 0 ~</code></td>
+                <td class="p-2.5 font-sans">với mọi <em>a</em><sub><em>i</em></sub> &le; 100 thì <em>x</em><sup>2</sup> &ge; 0</td>
+                <td class="p-2.5 text-right"><button type="button" onclick="insertSampleTildeExpr('với mọi a_i <= 100 thì x^2 >= 0')" class="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 font-sans font-semibold">Chèn</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== APPLICATION CORE JAVASCRIPT ENGINE ==================== -->
   <script>
     /* ============================================================================
@@ -1837,7 +2460,22 @@ git push -u origin main</pre>
         opacity: 1.0,
         strokeStyle: 'solid'
       },
-      pendingTextStamp: null
+      pendingTextStamp: null,
+      currentView: 'home',
+      homeFilter: 'all',
+      homeSortBy: 'lastOpened',
+      homeViewMode: 'grid',
+      selectedHomeDocIds: [],
+      collections: {},
+      editingCollectionId: null,
+      deletingCollectionId: null,
+      movingDocIds: [],
+      renamingDocId: null,
+      previewTrashDocId: null,
+      pendingPurgeAction: null,
+      lastTrashedDocIds: [],
+      autoTildeEnabled: true,
+      lastJustCreatedTildeSpan: null
     };
 
     // Runtime map of Drawing Zone objects on the current document
@@ -2305,7 +2943,10 @@ git push -u origin main</pre>
       }
     }
 
-    function handleEditorInput() {
+    function handleEditorInput(e) {
+      if (appState.autoTildeEnabled) {
+        tryAutoParseLiveTilde(e);
+      }
       updateStatusBar();
       refreshDocumentOutline();
       scheduleAutoSave();
@@ -2341,6 +2982,8 @@ git push -u origin main</pre>
       if (el.tagName === 'HR') return 'Đường kẻ ngang';
       if (el.tagName === 'A') return 'Liên kết';
       if (el.classList && el.classList.contains('doc-checklist')) return 'Danh sách công việc';
+      if (el.classList && el.classList.contains('smart-tilde-expr')) return 'Biểu thức ~...~';
+      if (el.classList && el.classList.contains('raw-tilde-expr')) return 'Chuỗi gốc ~...~';
       return 'phần tử';
     }
 
@@ -2447,6 +3090,15 @@ git push -u origin main</pre>
         extraBtns = `
           <button type="button" onclick="unwrapSelectedLink()" class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600">Gỡ link</button>
         `;
+      } else if (el.classList && el.classList.contains('smart-tilde-expr')) {
+        const rawPreview = el.getAttribute('data-raw') || '~...~';
+        extraBtns = `
+          <button type="button" onclick="revertSelectedTildeToRaw()" class="px-2 py-0.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono font-bold" title="Trả về nguyên văn chuỗi gốc ${rawPreview} (Alt + ~)">[~] Về dạng gốc (${rawPreview})</button>
+        `;
+      } else if (el.classList && el.classList.contains('raw-tilde-expr')) {
+        extraBtns = `
+          <button type="button" onclick="formatSelectedRawTilde()" class="px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-mono font-bold" title="Chuyển sang định dạng Toán học &amp; Ký tự đặc biệt">[fx] Định dạng ~...~</button>
+        `;
       }
 
       const shortcutHint = (el.tagName === 'IMG' || el.tagName === 'HR') ? 'Delete' : 'Shift+Delete';
@@ -2467,7 +3119,7 @@ git push -u origin main</pre>
         selectDrawingZone(null);
       }
       // Check if user clicked on a creatable/deletable element inside the editor
-      const target = e.target.closest('img, hr, table, pre, blockquote, .doc-checklist, a');
+      const target = e.target.closest('img, hr, table, pre, blockquote, .doc-checklist, a, .smart-tilde-expr, .raw-tilde-expr');
       if (target && document.getElementById('editor-content').contains(target)) {
         if (selectedEditorNode && selectedEditorNode !== target) {
           selectedEditorNode.classList.remove('doc-selected-node');
@@ -3585,6 +4237,23 @@ git push -u origin main</pre>
         if (e.code === 'Space' && document.activeElement !== document.getElementById('editor-content') && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
           spacebarPressed = true;
         }
+        // Revert freshly auto-parsed ~...~ immediately on Backspace or Ctrl+Z
+        if (appState.lastJustCreatedTildeSpan && document.body.contains(appState.lastJustCreatedTildeSpan)) {
+          if (e.key === 'Backspace' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z')) {
+            e.preventDefault();
+            revertTildeSpanToRaw(appState.lastJustCreatedTildeSpan);
+            appState.lastJustCreatedTildeSpan = null;
+            return;
+          } else if (e.key.length === 1) {
+            appState.lastJustCreatedTildeSpan = null;
+          }
+        }
+        // Shortcut Alt + ~ or Ctrl + ~ (Backquote) to toggle selected ~...~ between Formatted and Raw
+        if ((e.altKey || e.ctrlKey) && (e.code === 'Backquote' || e.key === '~' || e.key === '`')) {
+          e.preventDefault();
+          toggleSelectedTildeMode();
+          return;
+        }
         if (e.key === 'Escape') {
           stopCreateZoneMode();
           closeAllTopDropdowns();
@@ -3969,6 +4638,11 @@ git push -u origin main</pre>
         id: appState.currentDocId,
         title: document.getElementById('doc-title-input').value.trim() || 'Tài liệu chưa đặt tên',
         starred: !!existing.starred,
+        collectionId: existing.collectionId || null,
+        previousCollectionId: existing.previousCollectionId || null,
+        isTrashed: !!existing.isTrashed,
+        trashedAt: existing.trashedAt || null,
+        lastOpenedAt: existing.lastOpenedAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         pageOrientation: appState.pageOrientation,
         pageMargin: appState.pageMargin,
@@ -3991,7 +4665,7 @@ git push -u origin main</pre>
     async function saveCurrentDocumentNow() {
       const payload = buildCurrentDocumentPayload();
       appState.documents[payload.id] = payload;
-      safeLocalSet('docucanvas_docs_map_v2', appState.documents);
+      safeLocalSet('docucanvas_docs_map_v3', appState.documents);
       safeLocalSet('docucanvas_active_doc_id_v2', payload.id);
       await saveDocToIDB(payload);
 
@@ -4153,18 +4827,7 @@ git push -u origin main</pre>
     }
 
     function deleteDocumentById(docId) {
-      if (Object.keys(appState.documents).length <= 1) {
-        showToast('Cần giữ lại ít nhất 1 tài liệu trong không gian làm việc', 'warn');
-        return;
-      }
-      delete appState.documents[docId];
-      safeLocalSet('docucanvas_docs_map_v2', appState.documents);
-      if (appState.currentDocId === docId) {
-        const nextDoc = Object.values(appState.documents)[0];
-        loadDocumentIntoWorkspace(nextDoc);
-      }
-      openDocDashboardModal();
-      showToast('Đã xóa tài liệu');
+      moveDocumentToTrash(docId);
     }
 
     // --- Version History (Snapshots) ---
@@ -4410,6 +5073,10 @@ git push -u origin main</pre>
       const initials = name.split(/\s+/).map((w) => w[0]).join('').substring(0, 2).toUpperCase() || 'DC';
       document.getElementById('user-avatar-badge').textContent = initials;
       document.getElementById('user-name-label').textContent = name;
+      const homeAv = document.getElementById('home-user-avatar');
+      const homeNm = document.getElementById('home-user-name');
+      if (homeAv) homeAv.textContent = initials;
+      if (homeNm) homeNm.textContent = name;
       document.getElementById('modal-user-avatar').textContent = initials;
       document.getElementById('modal-user-name').textContent = name;
       document.getElementById('modal-user-email').textContent = email;
@@ -4526,21 +5193,104 @@ git push -u origin main</pre>
       if (type === 'study') {
         return {
           id: docId,
-          title: 'Sổ tay Giải tích & Lý thuyết Đồ thị',
+          title: 'Đề cương Giải tích 1 & Quy hoạch động C++ (Mẫu bộ gõ ~...~)',
           starred: true,
+          collectionId: 'col_math',
+          previousCollectionId: 'col_math',
+          isTrashed: false,
+          trashedAt: null,
+          lastOpenedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           pageOrientation: 'portrait',
           pageMargin: '64px',
           pageBgColor: '#ffffff',
           htmlContent: `
-            <h1>Sổ tay Thuật toán & Biến đổi Tuyến tính 2D</h1>
-            <h2>1. Phép chiếu Tọa độ Màn hình sang Tọa độ Thế giới (Inverse Matrix)</h2>
-            <p>Khi người dùng thực hiện thao tác <strong>Zoom</strong> với hệ số tỉ lệ <em>s</em> và dịch chuyển vùng nhìn <strong>Pan</strong> theo vector <em>(tx, ty)</em> bên trong Không gian vẽ, mọi tọa độ chuột được ánh xạ chuẩn xác qua công thức nghịch đảo:</p>
-            <pre>worldX = (screenX - offsetX) / scale;\nworldY = (screenY - offsetY) / scale;</pre>
-            <h2>2. Danh sách kiểm tra cài đặt Engine</h2>
-            <p>Các thành phần cốt lõi đã được kiểm thử:</p>
+            <h1>Đề cương Toán Giải Tích &amp; Thuật Toán (Tích hợp Bộ gõ ~...~)</h1>
+            <p>Bạn có thể gõ trực tiếp bất kỳ biểu thức nào nằm giữa hai dấu ngã <code>~ ... ~</code> để tự động định dạng ký tự đặc biệt, hoặc nhấp vào biểu thức để trả về dạng gốc <code>[~]</code>:</p>
+            <h2>1. Các Định lý Bất đẳng thức &amp; Giải tích</h2>
+            <ul>
+              <li>Bất đẳng thức cơ bản: <span class="smart-tilde-expr" contenteditable="false" data-raw="~ với mọi a_i <= 100 thì x^2 >= 0 ~" data-inner=" với mọi a_i <= 100 thì x^2 >= 0 ">${parseSmartTildeContent(' với mọi a_i <= 100 thì x^2 >= 0 ')}</span></li>
+              <li>Quan hệ tương đương: <span class="smart-tilde-expr" contenteditable="false" data-raw="~ x_1 + x_2 <= y <=> sqrt(a^2 + b^2) != 0 ~" data-inner=" x_1 + x_2 <= y <=> sqrt(a^2 + b^2) != 0 ">${parseSmartTildeContent(' x_1 + x_2 <= y <=> sqrt(a^2 + b^2) != 0 ')}</span></li>
+              <li>Lũy thừa &amp; Tập hợp: <span class="smart-tilde-expr" contenteditable="false" data-raw="~ forall x in R, 2^5 + x^(n+1) ~= alpha ~" data-inner=" forall x in R, 2^5 + x^(n+1) ~= alpha ">${parseSmartTildeContent(' forall x in R, 2^5 + x^(n+1) ~= alpha ')}</span></li>
+            </ul>
+            <h2>2. Công thức Quy hoạch động (Dynamic Programming)</h2>
+            <p>Phương trình chuyển trạng thái trên bảng 2 chiều: <span class="smart-tilde-expr" contenteditable="false" data-raw="~ dp_{i,j} = min(dp_{i-1,j}, dp_{i,j-1}) + a_i^k ~" data-inner=" dp_{i,j} = min(dp_{i-1,j}, dp_{i,j-1}) + a_i^k ">${parseSmartTildeContent(' dp_{i,j} = min(dp_{i-1,j}, dp_{i,j-1}) + a_i^k ')}</span></p>
+            <pre>for (int i = 1; i &lt;= n; ++i)\n  dp[i] = min(dp[i - 1] + a[i], dp[i]);</pre>
           `,
           zones: {},
+          versions: []
+        };
+      }
+
+      if (type === 'report') {
+        return {
+          id: docId,
+          title: 'Báo cáo Tiến độ Dự án & Biên bản Họp Nhóm',
+          starred: false,
+          collectionId: 'col_youth',
+          previousCollectionId: 'col_youth',
+          isTrashed: false,
+          trashedAt: null,
+          lastOpenedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          pageOrientation: 'portrait',
+          pageMargin: '64px',
+          pageBgColor: '#ffffff',
+          htmlContent: `
+            <h1>Báo cáo Tiến độ Dự án &amp; Phân công Nhiệm vụ</h1>
+            <p>Tổng hợp các mốc triển khai kỹ thuật và danh sách hạng mục cần hoàn thành trong tuần:</p>
+            <table class="doc-table">
+              <tbody>
+                <tr><th style="background-color:#e0e7ff">Hạng mục</th><th style="background-color:#e0e7ff">Phụ trách</th><th style="background-color:#e0e7ff">Trạng thái</th></tr>
+                <tr><td>Thiết kế Giao diện &amp; Không gian vẽ 3 Lớp</td><td>Minh Ngọc</td><td>Hoàn thành 100%</td></tr>
+                <tr><td>Tích hợp Bộ gõ Toán học ~...~ &amp; Cloud DB</td><td>Nhóm Core</td><td>Đang kiểm thử</td></tr>
+              </tbody>
+            </table>
+          `,
+          zones: {},
+          versions: []
+        };
+      }
+
+      if (type === 'freeform') {
+        return {
+          id: docId,
+          title: 'Bảng Vẽ Minh Họa & Sơ Đồ Tư Duy Tự Do',
+          starred: false,
+          collectionId: 'col_ai',
+          previousCollectionId: 'col_ai',
+          isTrashed: false,
+          trashedAt: null,
+          lastOpenedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          pageOrientation: 'portrait',
+          pageMargin: '64px',
+          pageBgColor: '#ffffff',
+          htmlContent: `<h1>Bảng Vẽ Minh Họa Tự Do</h1><p>Sử dụng khung vẽ lớn bên dưới để phác thảo sơ đồ kiến trúc hoặc minh họa tự do:</p>`,
+          zones: {
+            'zone_freeform_1': {
+              id: 'zone_freeform_1',
+              name: 'Zone #1 (Studio Lớn)',
+              x: 64,
+              y: 150,
+              width: 660,
+              height: 460,
+              layerMode: 'inline-break',
+              inlineAlign: 'center',
+              clickThrough: false,
+              visible: true,
+              locked: false,
+              zoneOpacity: 1.0,
+              bgColor: 'rgba(248, 250, 252, 0.9)',
+              viewport: { scale: 1.0, offsetX: 0, offsetY: 0 },
+              commands: [
+                { tool: 'rect', shapeMode: 'both', strokeColor: '#4f46e5', fillColor: 'rgba(79,70,229,0.08)', strokeWidth: 3, opacity: 1, strokeStyle: 'solid', points: [{ x: 40, y: 40 }, { x: 260, y: 150 }] },
+                { tool: 'ellipse', shapeMode: 'both', strokeColor: '#06b6d4', fillColor: 'rgba(6,182,212,0.12)', strokeWidth: 3, opacity: 1, strokeStyle: 'solid', points: [{ x: 380, y: 180 }, { x: 600, y: 320 }] },
+                { tool: 'arrow', shapeMode: 'stroke', strokeColor: '#7c3aed', fillColor: '#7c3aed', strokeWidth: 3, opacity: 1, strokeStyle: 'solid', points: [{ x: 262, y: 95 }, { x: 380, y: 240 }] }
+              ],
+              redoStack: []
+            }
+          },
           versions: []
         };
       }
@@ -4775,6 +5525,1273 @@ git push -u origin main</pre>
       };
     }
 
+    /* ============================================================================
+     * TÍNH NĂNG MỚI 4: BỘ GÕ KÝ TỰ ĐẶC BIỆT, BIẾN SỐ & CÔNG THỨC ~ ... ~
+     * (SMART TILDE INLINE PARSER & REVERSIBLE FORMATTER)
+     * ============================================================================ */
+
+    const GREEK_MAP = {
+      alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', Delta: 'Δ',
+      epsilon: 'ε', zeta: 'ζ', eta: 'η', theta: 'θ', Theta: 'Θ',
+      iota: 'ι', kappa: 'κ', lambda: 'λ', Lambda: 'Λ', mu: 'μ',
+      nu: 'ν', xi: 'ξ', pi: 'π', Pi: 'Π', rho: 'ρ',
+      sigma: 'σ', Sigma: 'Σ', tau: 'τ', phi: 'φ', Phi: 'Φ',
+      chi: 'χ', psi: 'ψ', omega: 'ω', Omega: 'Ω'
+    };
+
+    const MATH_KEYWORD_OP_MAP = {
+      forall: '∀', exists: '∃', notin: '∉', subseteq: '⊆', subset: '⊂',
+      union: '∪', intersect: '∩', empty: '∅', inf: '∞', oo: '∞',
+      sum: '∑', prod: '∏', int: '∫', deg: '°', times: '×', div: '÷', in: '∈'
+    };
+
+    const MATH_FUNC_NAMES = new Set(['min', 'max', 'sin', 'cos', 'tan', 'cot', 'log', 'ln', 'lim', 'gcd', 'lcm', 'mod', 'exp', 'det']);
+    const MATH_MULTI_VARS = new Set(['dp', 'ans', 'res', 'cnt', 'idx', 'val', 'len', 'mid', 'low', 'high']);
+
+    function escapeHtmlStr(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function stripOuterGroup(str) {
+      if (!str) return '';
+      if ((str.startsWith('{') && str.endsWith('}')) || (str.startsWith('(') && str.endsWith(')'))) {
+        return str.slice(1, -1);
+      }
+      return str;
+    }
+
+    function formatAtomicMathBase(baseStr) {
+      if (!baseStr) return '';
+      if (/^\d+(?:\.\d+)?$/.test(baseStr)) {
+        return `<span class="tilde-num">${escapeHtmlStr(baseStr)}</span>`;
+      }
+      if (GREEK_MAP[baseStr]) {
+        return `<span class="tilde-var">${GREEK_MAP[baseStr]}</span>`;
+      }
+      if (MATH_KEYWORD_OP_MAP[baseStr]) {
+        return `<span class="tilde-op">${MATH_KEYWORD_OP_MAP[baseStr]}</span>`;
+      }
+      if (MATH_FUNC_NAMES.has(baseStr)) {
+        return `<span class="tilde-op">${escapeHtmlStr(baseStr)}</span>`;
+      }
+      // Check if normal Vietnamese word vs math variable
+      if (/[^\x00-\x7F]/.test(baseStr) || (baseStr.length >= 2 && !MATH_MULTI_VARS.has(baseStr) && !/^[A-Z]\d*$/.test(baseStr))) {
+        return `<span class="tilde-text">${escapeHtmlStr(baseStr)}</span>`;
+      }
+      return `<span class="tilde-var">${escapeHtmlStr(baseStr)}</span>`;
+    }
+
+    function parseSmartTildeContent(rawInner) {
+      if (!rawInner) return '';
+      let s = String(rawInner);
+      let out = '';
+      let i = 0;
+
+      while (i < s.length) {
+        const rest = s.slice(i);
+
+        // 1. Whitespace
+        const wsMatch = rest.match(/^\s+/);
+        if (wsMatch) {
+          out += wsMatch[0];
+          i += wsMatch[0].length;
+          continue;
+        }
+
+        // 2. sqrt(...) function
+        const sqrtMatch = rest.match(/^sqrt\(([^()]+)\)/);
+        if (sqrtMatch) {
+          const innerHtml = parseSmartTildeContent(sqrtMatch[1]);
+          out += `<span class="tilde-sqrt">&radic;<span class="tilde-sqrt-body">${innerHtml}</span></span>`;
+          i += sqrtMatch[0].length;
+          continue;
+        }
+
+        // 3. Multi-character Operators & Arrows (Strict Priority Order: <=>, =>, <->, ->, <-, <=, >=, !=, <>, ~=, +-, -+, ...)
+        const opPairs = [
+          ['<==>', '⇔'], ['<=>', '⇔'],
+          ['==>', '⇒'], ['=>', '⇒'],
+          ['<->', '↔'], ['->', '→'], ['<-', '←'],
+          ['<=', '≤'], ['>=', '≥'],
+          ['!=', '≠'], ['<>', '≠'], ['~=', '≈'],
+          ['+-', '±'], ['-+', '∓'],
+          ['.' + '..' , '…'],
+          ['\\times', '×'], ['\\div', '÷'], ['\\in', '∈'], ['\\forall', '∀'], ['\\exists', '∃']
+        ];
+        let matchedOp = false;
+        for (const [pat, sym] of opPairs) {
+          if (rest.startsWith(pat)) {
+            out += `<span class="tilde-op">${sym}</span>`;
+            i += pat.length;
+            matchedOp = true;
+            break;
+          }
+        }
+        if (matchedOp) continue;
+
+        // 4. Base with Subscript and/or Superscript (e.g., 2^5, a_i, x^(n+1), dp_{i,j}, x_i^2, a_1^k)
+        const subSupMatch = rest.match(/^([A-Za-z0-9]+)(?:(_(?:\{[^}]+\}|\([^)]+\)|[A-Za-z0-9+\-,]+))(\^(?:\{[^}]+\}|\([^)]+\)|[A-Za-z0-9+\-,]+))?|(\^(?:\{[^}]+\}|\([^)]+\)|[A-Za-z0-9+\-,]+))(_(?:\{[^}]+\}|\([^)]+\)|[A-Za-z0-9+\-,]+))?)/);
+        if (subSupMatch) {
+          const base = subSupMatch[1];
+          const subPart = subSupMatch[2] || subSupMatch[5] || '';
+          const supPart = subSupMatch[3] || subSupMatch[4] || '';
+          let chunk = formatAtomicMathBase(base);
+          if (subPart) {
+            const cleanSub = stripOuterGroup(subPart.slice(1));
+            chunk += `<sub class="tilde-sub">${parseSmartTildeContent(cleanSub)}</sub>`;
+          }
+          if (supPart) {
+            const cleanSup = stripOuterGroup(supPart.slice(1));
+            chunk += `<sup class="tilde-sup">${parseSmartTildeContent(cleanSup)}</sup>`;
+          }
+          out += chunk;
+          i += subSupMatch[0].length;
+          continue;
+        }
+
+        // 5. Numbers (Group B)
+        const numMatch = rest.match(/^\d+(?:\.\d+)?/);
+        if (numMatch) {
+          out += `<span class="tilde-num">${numMatch[0]}</span>`;
+          i += numMatch[0].length;
+          continue;
+        }
+
+        // 6. Words, Keywords, Greek Letters, Variables vs Normal Vietnamese Text
+        const wordMatch = rest.match(/^[A-Za-z\u00C0-\u1EF9]+/);
+        if (wordMatch) {
+          const w = wordMatch[0];
+          if (GREEK_MAP[w]) {
+            out += `<span class="tilde-var">${GREEK_MAP[w]}</span>`;
+          } else if (MATH_KEYWORD_OP_MAP[w]) {
+            out += `<span class="tilde-op">${MATH_KEYWORD_OP_MAP[w]}</span>`;
+          } else {
+            out += formatAtomicMathBase(w);
+          }
+          i += w.length;
+          continue;
+        }
+
+        // 7. Single-char Math Operators & Punctuation
+        const ch = rest[0];
+        if (ch === '*') {
+          out += `<span class="tilde-op">&middot;</span>`;
+        } else if ('+-=/<>'.includes(ch)) {
+          out += `<span class="tilde-op">${escapeHtmlStr(ch)}</span>`;
+        } else {
+          out += escapeHtmlStr(ch);
+        }
+        i += 1;
+      }
+
+      return out;
+    }
+
+    function createSmartTildeSpanElement(rawInner) {
+      const span = document.createElement('span');
+      span.className = 'smart-tilde-expr';
+      span.setAttribute('contenteditable', 'false');
+      span.setAttribute('data-raw', `~${rawInner}~`);
+      span.setAttribute('data-inner', rawInner);
+      span.innerHTML = parseSmartTildeContent(rawInner);
+      return span;
+    }
+
+    function tryAutoParseLiveTilde(e) {
+      if (e && e.inputType && e.inputType.startsWith('delete')) {
+        return;
+      }
+      const sel = window.getSelection();
+      if (!sel || !sel.rangeCount || !sel.isCollapsed) return;
+      const node = sel.anchorNode;
+      if (!node || node.nodeType !== Node.TEXT_NODE) return;
+      const parentEl = node.parentElement;
+      if (!parentEl || parentEl.closest('.smart-tilde-expr, .raw-tilde-expr, pre, code, [data-ignore-tilde="true"]')) return;
+
+      const textBefore = node.nodeValue.substring(0, sel.anchorOffset);
+      // Match a completed ~ ... ~ right before the caret
+      const match = textBefore.match(/~([^~\n]{1,120})~$/);
+      if (!match) {
+        appState.lastJustCreatedTildeSpan = null;
+        return;
+      }
+
+      const fullMatch = match[0];
+      const innerContent = match[1].trim();
+      if (!innerContent) return;
+
+      const startIdx = sel.anchorOffset - fullMatch.length;
+      const endIdx = sel.anchorOffset;
+
+      const range = document.createRange();
+      range.setStart(node, startIdx);
+      range.setEnd(node, endIdx);
+      range.deleteContents();
+
+      const tildeSpan = createSmartTildeSpanElement(match[1]);
+      const trailingSpace = document.createTextNode('\u00A0');
+      range.insertNode(trailingSpace);
+      range.insertNode(tildeSpan);
+
+      // Move caret right after the newly inserted tildeSpan + trailing space so typing continues smoothly
+      const newRange = document.createRange();
+      newRange.setStartAfter(trailingSpace);
+      newRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+
+      appState.lastJustCreatedTildeSpan = tildeSpan;
+      showToast(`Đã định dạng biểu thức ~...~ (Bấm Backspace hoặc [~] để hoàn nguyên dạng gốc)`);
+    }
+
+    function revertTildeSpanToRaw(spanEl) {
+      if (!spanEl) return;
+      const rawText = spanEl.getAttribute('data-raw') || `~${spanEl.textContent}~`;
+      const rawInner = spanEl.getAttribute('data-inner') || rawText.slice(1, -1);
+      const rawSpan = document.createElement('span');
+      rawSpan.className = 'raw-tilde-expr';
+      rawSpan.setAttribute('data-ignore-tilde', 'true');
+      rawSpan.setAttribute('data-raw', rawText);
+      rawSpan.setAttribute('data-inner', rawInner);
+      rawSpan.textContent = rawText;
+      spanEl.replaceWith(rawSpan);
+      selectedEditorNode = rawSpan;
+      rawSpan.classList.add('doc-selected-node');
+      positionElementContextPill(rawSpan);
+      scheduleAutoSave();
+      showToast(`Đã trả về chuỗi gốc: ${rawText}`);
+    }
+
+    function formatRawTildeSpan(rawSpanEl) {
+      if (!rawSpanEl) return;
+      const rawText = rawSpanEl.textContent || rawSpanEl.getAttribute('data-raw') || '';
+      const inner = rawText.replace(/^~|~$/g, '');
+      const formattedSpan = createSmartTildeSpanElement(inner);
+      rawSpanEl.replaceWith(formattedSpan);
+      selectedEditorNode = formattedSpan;
+      formattedSpan.classList.add('doc-selected-node');
+      positionElementContextPill(formattedSpan);
+      scheduleAutoSave();
+      showToast('Đã định dạng lại cụm ký tự đặc biệt ~...~');
+    }
+
+    function revertSelectedTildeToRaw() {
+      if (selectedEditorNode && selectedEditorNode.classList.contains('smart-tilde-expr')) {
+        revertTildeSpanToRaw(selectedEditorNode);
+      }
+    }
+
+    function formatSelectedRawTilde() {
+      if (selectedEditorNode && selectedEditorNode.classList.contains('raw-tilde-expr')) {
+        formatRawTildeSpan(selectedEditorNode);
+      }
+    }
+
+    function toggleSelectedTildeMode() {
+      if (selectedEditorNode && selectedEditorNode.classList.contains('smart-tilde-expr')) {
+        revertTildeSpanToRaw(selectedEditorNode);
+        return;
+      }
+      if (selectedEditorNode && selectedEditorNode.classList.contains('raw-tilde-expr')) {
+        formatRawTildeSpan(selectedEditorNode);
+        return;
+      }
+      if (appState.lastJustCreatedTildeSpan && document.body.contains(appState.lastJustCreatedTildeSpan)) {
+        revertTildeSpanToRaw(appState.lastJustCreatedTildeSpan);
+        appState.lastJustCreatedTildeSpan = null;
+        return;
+      }
+      // Also check if user highlighted raw ~...~ text in the editor
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed) {
+        const text = sel.toString().trim();
+        if (text.startsWith('~') && text.endsWith('~') && text.length > 2) {
+          const inner = text.slice(1, -1);
+          const span = createSmartTildeSpanElement(inner);
+          const range = sel.getRangeAt(0);
+          range.deleteContents();
+          range.insertNode(span);
+          scheduleAutoSave();
+          showToast('Đã chuyển vùng bôi đen sang biểu thức ~...~');
+          return;
+        }
+      }
+      showToast('Hãy nhấp vào một cụm ~...~ trên trang để chuyển đổi qua lại giữa Định dạng Toán học và Dạng gốc', 'info');
+    }
+
+    function openTildeCheatSheetModal() {
+      const cb = document.getElementById('toggle-auto-tilde-checkbox');
+      if (cb) cb.checked = !!appState.autoTildeEnabled;
+      openModal('modal-tilde-cheatsheet');
+    }
+
+    function toggleAutoTildeSetting(enabled) {
+      appState.autoTildeEnabled = !!enabled;
+      safeLocalSet('docucanvas_auto_tilde', appState.autoTildeEnabled);
+      showToast(appState.autoTildeEnabled ? 'Đã BẬT tự động chuyển đổi ~...~' : 'Đã TẮT tự động chuyển đổi ~...~');
+    }
+
+    function insertSampleTildeExpr(innerExpr) {
+      if (innerExpr === 'sample_calculus') innerExpr = 'forall x in R, sqrt(x^2) >= alpha';
+      closeModal('modal-tilde-cheatsheet');
+      if (appState.currentView !== 'editor') {
+        switchAppView('editor', appState.currentDocId);
+      }
+      const editor = document.getElementById('editor-content');
+      if (!editor) return;
+      editor.focus();
+      const span = createSmartTildeSpanElement(` ${innerExpr} `);
+      const space = document.createTextNode(' ');
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
+        const range = sel.getRangeAt(0);
+        range.insertNode(space);
+        range.insertNode(span);
+      } else {
+        const p = editor.querySelector('p') || editor;
+        p.appendChild(span);
+        p.appendChild(space);
+      }
+      handleEditorInput();
+      showToast(`Đã chèn biểu thức mẫu: ~ ${innerExpr} ~`, 'success');
+    }
+
+    /* ============================================================================
+     * TÍNH NĂNG MỚI 1, 2, 3: TRANG CHỦ GOOGLE DOCS, TẬP TÀI LIỆU (COLLECTIONS)
+     * & THÙNG RÁC THÔNG MINH LƯU GIỮ 30 NGÀY (30-DAY SMART TRASH)
+     * ============================================================================ */
+
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+    function buildDefaultCollections() {
+      return {
+        col_math: { id: 'col_math', name: 'Giải Tích & Toán Học', color: '#4f46e5', icon: 'fa-square-root-variable', createdAt: new Date().toISOString() },
+        col_cpp:  { id: 'col_cpp',  name: 'Lập Trình C++ & Thuật Toán', color: '#0891b2', icon: 'fa-code', createdAt: new Date().toISOString() },
+        col_ai:   { id: 'col_ai',   name: 'Dự Án AI & Hệ Thống', color: '#7c3aed', icon: 'fa-microchip', createdAt: new Date().toISOString() },
+        col_youth:{ id: 'col_youth',name: 'Đoàn Trường & Sự Kiện', color: '#059669', icon: 'fa-users-gear', createdAt: new Date().toISOString() }
+      };
+    }
+
+    function saveCollectionsState() {
+      safeLocalSet('docucanvas_collections_v1', appState.collections);
+    }
+
+    function runAutoPurge30Days() {
+      const now = Date.now();
+      let purgedCount = 0;
+      Object.values(appState.documents).forEach((doc) => {
+        if (doc.isTrashed && doc.trashedAt && (now - doc.trashedAt >= THIRTY_DAYS_MS)) {
+          delete appState.documents[doc.id];
+          purgedCount++;
+        }
+      });
+      if (purgedCount > 0) {
+        safeLocalSet('docucanvas_docs_map_v3', appState.documents);
+        showToast(`Đã tự động dọn sạch ${purgedCount} tài liệu quá hạn 30 ngày trong Thùng rác`);
+      }
+    }
+
+    function getRemainingTrashDays(trashedAt) {
+      if (!trashedAt) return 30;
+      const elapsedDays = Math.floor((Date.now() - trashedAt) / (1000 * 60 * 60 * 24));
+      return Math.max(0, 30 - elapsedDays);
+    }
+
+    // --- View Navigation Router (Home Dashboard <-> Document Editor) ---
+    function switchAppView(viewName, docId = null) {
+      const homeEl = document.getElementById('home-dashboard-view');
+      const editorEl = document.getElementById('editor-view-container');
+      if (!homeEl || !editorEl) return;
+
+      if (viewName === 'editor') {
+        const targetId = docId || appState.currentDocId || Object.keys(appState.documents)[0];
+        const targetDoc = appState.documents[targetId];
+        if (!targetDoc || targetDoc.isTrashed) {
+          if (targetDoc && targetDoc.isTrashed) {
+            openTrashPreviewModal(targetDoc.id);
+          }
+          return;
+        }
+        targetDoc.lastOpenedAt = new Date().toISOString();
+        appState.currentView = 'editor';
+        homeEl.classList.add('hidden');
+        editorEl.classList.remove('hidden');
+        loadDocumentIntoWorkspace(targetDoc);
+        saveCurrentDocumentNow();
+        try { history.replaceState(null, '', `#/doc/${targetId}`); } catch (e) {}
+      } else {
+        if (appState.currentView === 'editor') {
+          saveCurrentDocumentNow();
+        }
+        appState.currentView = 'home';
+        editorEl.classList.add('hidden');
+        homeEl.classList.remove('hidden');
+        runAutoPurge30Days();
+        renderHomeDashboard();
+        try {
+          const hashSuffix = appState.homeFilter === 'trash' ? '#/trash' : '#/home';
+          history.replaceState(null, '', hashSuffix);
+        } catch (e) {}
+      }
+    }
+
+    function navigateToHomeDashboard() {
+      switchAppView('home');
+    }
+
+    function clearHomeSearch() {
+      const inp = document.getElementById('home-omnibox-search');
+      if (inp) {
+        inp.value = '';
+        renderHomeDashboard();
+      }
+    }
+
+    function setHomeFilter(filterKey) {
+      appState.homeFilter = filterKey;
+      appState.selectedHomeDocIds = [];
+      renderHomeDashboard();
+    }
+
+    function setHomeSortBy(sortKey) {
+      appState.homeSortBy = sortKey;
+      renderHomeDashboard();
+    }
+
+    function setHomeViewMode(mode) {
+      appState.homeViewMode = mode;
+      const gBtn = document.getElementById('btn-view-grid');
+      const lBtn = document.getElementById('btn-view-list');
+      if (gBtn && lBtn) {
+        gBtn.className = mode === 'grid' ? 'px-2.5 py-1 rounded-md text-xs bg-indigo-600 text-white' : 'px-2.5 py-1 rounded-md text-xs text-slate-500 hover:text-indigo-500';
+        lBtn.className = mode === 'list' ? 'px-2.5 py-1 rounded-md text-xs bg-indigo-600 text-white' : 'px-2.5 py-1 rounded-md text-xs text-slate-500 hover:text-indigo-500';
+      }
+      renderHomeDashboard();
+    }
+
+    function createNewDocFromHome(templateType = 'blank', forcedCollectionId = null) {
+      const newId = `doc_${Date.now()}`;
+      const activeColId = forcedCollectionId || (appState.homeFilter.startsWith('col_') ? appState.homeFilter : null);
+      const doc = buildTemplateDocument(newId, templateType);
+      doc.collectionId = activeColId;
+      doc.previousCollectionId = activeColId;
+      doc.isTrashed = false;
+      doc.trashedAt = null;
+      doc.lastOpenedAt = new Date().toISOString();
+      appState.documents[newId] = doc;
+      safeLocalSet('docucanvas_docs_map_v3', appState.documents);
+      switchAppView('editor', newId);
+      showToast(`Đã tạo tài liệu mới: ${doc.title}`, 'success');
+    }
+
+    function createNewDocInCurrentCollection() {
+      if (appState.homeFilter.startsWith('col_')) {
+        createNewDocFromHome('blank', appState.homeFilter);
+      } else {
+        createNewDocFromHome('blank');
+      }
+    }
+
+    // --- Render Google Docs-Style Home Dashboard ---
+    function stripHtmlToSnippet(htmlStr) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = htmlStr || '';
+      return (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function renderHomeDashboard() {
+      const allDocs = Object.values(appState.documents);
+      const activeDocs = allDocs.filter((d) => !d.isTrashed);
+      const trashedDocs = allDocs.filter((d) => !!d.isTrashed);
+      const starredDocs = activeDocs.filter((d) => !!d.starred);
+      const unfiledDocs = activeDocs.filter((d) => !d.collectionId || !appState.collections[d.collectionId]);
+
+      // Update Sidebar Badges
+      const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = String(val); };
+      setTxt('badge-count-all', activeDocs.length);
+      setTxt('badge-count-starred', starredDocs.length);
+      setTxt('badge-count-unfiled', unfiledDocs.length);
+      setTxt('badge-count-trash', trashedDocs.length);
+
+      // Update Active Nav Item Styling
+      ['all', 'starred', 'unfiled', 'trash'].forEach((k) => {
+        const btn = document.getElementById(`nav-home-${k}`);
+        if (!btn) return;
+        const isCurrent = appState.homeFilter === k;
+        if (isCurrent) {
+          btn.className = k === 'trash'
+            ? 'w-full px-3 py-2 rounded-xl font-semibold flex items-center justify-between transition bg-rose-600 text-white shadow-xs'
+            : 'w-full px-3 py-2 rounded-xl font-semibold flex items-center justify-between transition bg-indigo-600 text-white shadow-xs';
+        } else {
+          btn.className = 'w-full px-3 py-2 rounded-xl font-semibold flex items-center justify-between transition text-slate-700 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800';
+        }
+      });
+
+      // Render Collections in Left Sidebar (with Drag & Drop support!)
+      const colSidebar = document.getElementById('home-collections-sidebar');
+      const colChips = document.getElementById('home-collection-chips');
+      const cols = Object.values(appState.collections);
+
+      if (colSidebar) {
+        colSidebar.innerHTML = cols.map((c) => {
+          const count = activeDocs.filter((d) => d.collectionId === c.id).length;
+          const isCurrent = appState.homeFilter === c.id;
+          return `
+            <div
+              ondragover="handleCollectionDragOver(event, this)"
+              ondragleave="handleCollectionDragLeave(event, this)"
+              ondrop="handleCollectionDrop(event, '${c.id}', this)"
+              class="group flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition cursor-pointer ${isCurrent ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'hover:bg-slate-200/60 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'}"
+            >
+              <button type="button" onclick="setHomeFilter('${c.id}')" class="flex items-center gap-2 truncate flex-1 text-left">
+                <span class="w-5 h-5 rounded-md flex items-center justify-center text-white text-[10px] shrink-0" style="background-color:${c.color}">
+                  <i class="fa-solid ${c.icon || 'fa-folder'}"></i>
+                </span>
+                <span class="truncate">${escapeHtmlStr(c.name)}</span>
+              </button>
+              <div class="flex items-center gap-1 shrink-0">
+                <span class="text-[10px] px-1.5 py-0.5 rounded-full ${isCurrent ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}">${count}</span>
+                <button type="button" onclick="openCollectionModal('${c.id}', event)" class="opacity-0 group-hover:opacity-100 w-5 h-5 rounded hover:bg-white/20 flex items-center justify-center" title="Sửa Tập">
+                  <i class="fa-solid fa-pen text-[9px]"></i>
+                </button>
+                <button type="button" onclick="openDeleteCollectionModal('${c.id}', event)" class="opacity-0 group-hover:opacity-100 w-5 h-5 rounded hover:bg-rose-500 hover:text-white flex items-center justify-center" title="Giải tán / Xóa Tập">
+                  <i class="fa-solid fa-trash-can text-[9px]"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Render Collection Filter Chips
+      if (colChips) {
+        const chipCls = (active) => active
+          ? 'px-3 py-1 rounded-full text-xs font-bold bg-indigo-600 text-white shadow-xs shrink-0 transition'
+          : 'px-3 py-1 rounded-full text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-400 shrink-0 transition';
+
+        colChips.innerHTML = `
+          <button type="button" onclick="setHomeFilter('all')" class="${chipCls(appState.homeFilter === 'all')}">Tất cả (${activeDocs.length})</button>
+          ${cols.map((c) => {
+            const cnt = activeDocs.filter((d) => d.collectionId === c.id).length;
+            return `<button type="button" onclick="setHomeFilter('${c.id}')" ondragover="handleCollectionDragOver(event, this)" ondragleave="handleCollectionDragLeave(event, this)" ondrop="handleCollectionDrop(event, '${c.id}', this)" class="${chipCls(appState.homeFilter === c.id)} flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full" style="background-color:${c.color}"></span>
+              <span>${escapeHtmlStr(c.name)} (${cnt})</span>
+            </button>`;
+          }).join('')}
+        `;
+      }
+
+      // Toggle Template Banner vs Trash Banner
+      const tplBanner = document.getElementById('home-template-banner');
+      const trashBanner = document.getElementById('home-trash-banner');
+      const createInColBtn = document.getElementById('btn-create-in-collection');
+      const sectionTitle = document.getElementById('home-section-title');
+
+      const isTrashView = appState.homeFilter === 'trash';
+      if (tplBanner) tplBanner.classList.toggle('hidden', isTrashView);
+      if (trashBanner) trashBanner.classList.toggle('hidden', !isTrashView);
+      if (createInColBtn) createInColBtn.classList.toggle('hidden', !appState.homeFilter.startsWith('col_'));
+
+      if (sectionTitle) {
+        if (isTrashView) sectionTitle.textContent = `Thùng rác (${trashedDocs.length} tài liệu)`;
+        else if (appState.homeFilter === 'starred') sectionTitle.textContent = 'Tài liệu Đánh dấu sao';
+        else if (appState.homeFilter === 'unfiled') sectionTitle.textContent = 'Tài liệu Chưa phân loại';
+        else if (appState.homeFilter.startsWith('col_') && appState.collections[appState.homeFilter]) {
+          sectionTitle.textContent = `Tập: ${appState.collections[appState.homeFilter].name}`;
+        } else {
+          sectionTitle.textContent = 'Tất cả Tài liệu Gần đây';
+        }
+      }
+
+      // Filter Documents by Current Filter + Omnibox Search Query
+      const searchInput = document.getElementById('home-omnibox-search');
+      const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
+
+      let filtered = isTrashView ? [...trashedDocs] : [...activeDocs];
+      if (!isTrashView) {
+        if (appState.homeFilter === 'starred') filtered = filtered.filter((d) => !!d.starred);
+        else if (appState.homeFilter === 'unfiled') filtered = filtered.filter((d) => !d.collectionId || !appState.collections[d.collectionId]);
+        else if (appState.homeFilter.startsWith('col_')) filtered = filtered.filter((d) => d.collectionId === appState.homeFilter);
+      }
+
+      if (query) {
+        filtered = filtered.filter((d) => {
+          const titleMatch = (d.title || '').toLowerCase().includes(query);
+          const bodyMatch = stripHtmlToSnippet(d.htmlContent).toLowerCase().includes(query);
+          const colObj = d.collectionId ? appState.collections[d.collectionId] : null;
+          const colMatch = colObj && colObj.name.toLowerCase().includes(query);
+          return titleMatch || bodyMatch || colMatch;
+        });
+      }
+
+      // Sort Filtered Documents
+      filtered.sort((a, b) => {
+        if (appState.homeSortBy === 'title') {
+          return (a.title || '').localeCompare(b.title || '', 'vi');
+        }
+        if (appState.homeSortBy === 'updated') {
+          return (b.updatedAt || '').localeCompare(a.updatedAt || '');
+        }
+        return (b.lastOpenedAt || b.updatedAt || '').localeCompare(a.lastOpenedAt || a.updatedAt || '');
+      });
+
+      // Update Batch Action Bar visibility
+      const batchBar = document.getElementById('home-batch-bar');
+      const batchLabel = document.getElementById('home-batch-count-label');
+      if (batchBar) {
+        if (appState.selectedHomeDocIds.length > 0) {
+          batchBar.classList.remove('hidden');
+          batchBar.classList.add('flex');
+          if (batchLabel) batchLabel.textContent = `Đã chọn ${appState.selectedHomeDocIds.length} tài liệu`;
+        } else {
+          batchBar.classList.add('hidden');
+          batchBar.classList.remove('flex');
+        }
+      }
+
+      // Render Document Cards (Grid or List)
+      const container = document.getElementById('home-documents-container');
+      if (!container) return;
+
+      if (!filtered.length) {
+        container.className = 'w-full';
+        container.innerHTML = `
+          <div class="bg-white/70 dark:bg-slate-900/70 border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-12 text-center space-y-3">
+            <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-xl mx-auto">
+              <i class="fa-regular ${isTrashView ? 'fa-trash-can' : 'fa-folder-open'}"></i>
+            </div>
+            <div class="font-display font-bold text-sm">${isTrashView ? 'Thùng rác đang trống' : 'Không tìm thấy tài liệu nào trong mục này'}</div>
+            <p class="text-xs text-slate-400">${isTrashView ? 'Các file đã xóa sẽ được lưu giữ tại đây trong 30 ngày trước khi tự động dọn sạch.' : 'Nhấp nút "+ Tạo Tài Liệu Mới" hoặc kéo-thả file vào Tập này.'}</p>
+          </div>
+        `;
+        return;
+      }
+
+      if (appState.homeViewMode === 'list') {
+        container.className = 'space-y-2';
+      } else {
+        container.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4';
+      }
+
+      container.innerHTML = filtered.map((d) => renderSingleHomeDocCard(d, isTrashView)).join('');
+    }
+
+    function renderSingleHomeDocCard(doc, isTrashView) {
+      const col = (doc.collectionId && appState.collections[doc.collectionId]) ? appState.collections[doc.collectionId] : null;
+      const zoneCount = Object.keys(doc.zones || {}).length;
+      const snippet = stripHtmlToSnippet(doc.htmlContent) || 'Tài liệu trống...';
+      const isChecked = appState.selectedHomeDocIds.includes(doc.id);
+      const updatedTimeStr = new Date(doc.updatedAt || Date.now()).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+      let trashBadgeHtml = '';
+      if (isTrashView) {
+        const daysLeft = getRemainingTrashDays(doc.trashedAt);
+        const urgent = daysLeft <= 5;
+        trashBadgeHtml = `
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${urgent ? 'bg-rose-500 text-white animate-pulse' : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'}">
+            <i class="fa-regular fa-clock mr-1"></i>Còn ${daysLeft} ngày
+          </span>
+        `;
+      }
+
+      const colBadgeHtml = col
+        ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-white" style="background-color:${col.color}">
+            <i class="fa-solid ${col.icon || 'fa-folder'} text-[9px]"></i> ${escapeHtmlStr(col.name)}
+           </span>`
+        : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">Chưa phân loại</span>`;
+
+      if (appState.homeViewMode === 'list') {
+        return `
+          <div
+            draggable="${!isTrashView}"
+            ondragstart="handleDocCardDragStart(event, '${doc.id}')"
+            class="group bg-white dark:bg-slate-900 border ${isChecked ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-800 hover:border-indigo-400'} rounded-xl px-4 py-3 flex items-center justify-between gap-3 transition shadow-2xs"
+          >
+            <div class="flex items-center gap-3 min-w-0 flex-1">
+              <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectHomeDoc('${doc.id}', this.checked)" class="w-4 h-4 rounded text-indigo-600 cursor-pointer shrink-0" />
+              <div onclick="${isTrashView ? `openTrashPreviewModal('${doc.id}')` : `switchAppView('editor', '${doc.id}')`}" class="flex items-center gap-3 min-w-0 flex-1 cursor-pointer">
+                <div class="w-9 h-9 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                  <i class="fa-solid fa-file-lines"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="font-bold text-xs sm:text-sm truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400">${escapeHtmlStr(doc.title)}</div>
+                  <div class="text-[11px] text-slate-400 truncate">${escapeHtmlStr(snippet.substring(0, 95))}</div>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              ${colBadgeHtml}
+              ${trashBadgeHtml}
+              <span class="hidden md:inline text-[11px] text-slate-400"><i class="fa-solid fa-layer-group mr-1 text-indigo-400"></i>${zoneCount} khung vẽ</span>
+              <span class="hidden lg:inline text-[11px] text-slate-400">${updatedTimeStr}</span>
+              ${isTrashView ? `
+                <button type="button" onclick="restoreDocumentFromTrash('${doc.id}')" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold">Khôi phục</button>
+                <button type="button" onclick="openSinglePurgeConfirmModal('${doc.id}')" class="px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-600 hover:text-white text-rose-600 text-xs" title="Xóa vĩnh viễn"><i class="fa-solid fa-fire"></i></button>
+              ` : `
+                <button type="button" onclick="toggleStarFromHome('${doc.id}', event)" class="w-7 h-7 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+                  <i class="${doc.starred ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-slate-400'}"></i>
+                </button>
+                <button type="button" onclick="openMoveCollectionModalForDoc('${doc.id}', event)" class="w-7 h-7 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-xs text-indigo-500" title="Chuyển vào Tập tài liệu">
+                  <i class="fa-solid fa-folder-tree"></i>
+                </button>
+                <button type="button" onclick="openRenameDocModal('${doc.id}', event)" class="w-7 h-7 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-xs text-slate-500" title="Đổi tên">
+                  <i class="fa-solid fa-pen"></i>
+                </button>
+                <button type="button" onclick="moveDocumentToTrash('${doc.id}', event)" class="w-7 h-7 rounded-lg hover:bg-rose-500/10 text-rose-500 flex items-center justify-center text-xs" title="Chuyển vào Thùng rác (Lưu 30 ngày)">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              `}
+            </div>
+          </div>
+        `;
+      }
+
+      // Grid View Card with Miniature Page Preview
+      return `
+        <div
+          draggable="${!isTrashView}"
+          ondragstart="handleDocCardDragStart(event, '${doc.id}')"
+          class="group bg-white dark:bg-slate-900 border ${isChecked ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-800 hover:border-indigo-500'} rounded-2xl overflow-hidden flex flex-col justify-between transition shadow-xs hover:shadow-xl"
+        >
+          <!-- Top Miniature Page Preview Area -->
+          <div
+            onclick="${isTrashView ? `openTrashPreviewModal('${doc.id}')` : `switchAppView('editor', '${doc.id}')`}"
+            class="doc-card-preview h-36 p-3.5 border-b border-slate-100 dark:border-slate-800 cursor-pointer relative select-none"
+          >
+            <!-- Top Overlay Checkbox & Star -->
+            <div class="flex items-center justify-between mb-2">
+              <input
+                type="checkbox"
+                ${isChecked ? 'checked' : ''}
+                onclick="event.stopPropagation()"
+                onchange="toggleSelectHomeDoc('${doc.id}', this.checked)"
+                class="w-4 h-4 rounded text-indigo-600 cursor-pointer"
+                title="Chọn để gom nhóm hàng loạt"
+              />
+              <div class="flex items-center gap-1">
+                ${trashBadgeHtml}
+                ${!isTrashView ? `
+                  <button type="button" onclick="toggleStarFromHome('${doc.id}', event)" class="w-6 h-6 rounded-full bg-white/80 dark:bg-slate-800/80 flex items-center justify-center shadow-2xs">
+                    <i class="${doc.starred ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-slate-400'} text-xs"></i>
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- Mini A4 Page Content Preview -->
+            <div class="bg-white dark:bg-slate-950/90 border border-slate-200/80 dark:border-slate-800 rounded-lg p-2.5 h-24 overflow-hidden shadow-2xs">
+              <div class="font-bold text-[10px] text-slate-700 dark:text-slate-200 truncate mb-1">${escapeHtmlStr(doc.title)}</div>
+              <p class="text-[9.5px] text-slate-400 line-clamp-3 leading-relaxed">${escapeHtmlStr(snippet.substring(0, 140))}</p>
+            </div>
+
+            <!-- Zone Count Pill on Preview Bottom Right -->
+            <span class="absolute bottom-2 right-3 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-indigo-600/90 text-white shadow-xs">
+              <i class="fa-solid fa-paintbrush mr-1"></i>${zoneCount} lớp vẽ
+            </span>
+          </div>
+
+          <!-- Card Footer Info & Action Menu -->
+          <div class="p-3.5 space-y-2.5">
+            <div onclick="${isTrashView ? `openTrashPreviewModal('${doc.id}')` : `switchAppView('editor', '${doc.id}')`}" class="cursor-pointer">
+              <div class="font-display font-bold text-xs sm:text-sm truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400" title="${escapeHtmlStr(doc.title)}">
+                ${escapeHtmlStr(doc.title)}
+              </div>
+              <div class="flex items-center justify-between gap-1 mt-1.5">
+                ${colBadgeHtml}
+                <span class="text-[10px] text-slate-400">${updatedTimeStr}</span>
+              </div>
+            </div>
+
+            <!-- Bottom Quick Actions Row -->
+            <div class="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1 text-xs">
+              ${isTrashView ? `
+                <button type="button" onclick="openTrashPreviewModal('${doc.id}')" class="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-[11px] font-semibold">
+                  <i class="fa-regular fa-eye mr-1"></i>Xem trước
+                </button>
+                <div class="flex items-center gap-1">
+                  <button type="button" onclick="restoreDocumentFromTrash('${doc.id}')" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold">
+                    <i class="fa-solid fa-rotate-left mr-1"></i>Khôi phục
+                  </button>
+                  <button type="button" onclick="openSinglePurgeConfirmModal('${doc.id}')" class="px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-600 hover:text-white text-rose-600 text-[11px]" title="Xóa vĩnh viễn">
+                    <i class="fa-solid fa-fire"></i>
+                  </button>
+                </div>
+              ` : `
+                <button type="button" onclick="switchAppView('editor', '${doc.id}')" class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+                  Mở soạn thảo &rarr;
+                </button>
+                <div class="flex items-center gap-1">
+                  <button type="button" onclick="openRenameDocModal('${doc.id}', event)" class="w-6 h-6 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center" title="Đổi tên file">
+                    <i class="fa-solid fa-pen text-[10px]"></i>
+                  </button>
+                  <button type="button" onclick="openMoveCollectionModalForDoc('${doc.id}', event)" class="w-6 h-6 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-indigo-500 flex items-center justify-center" title="Chuyển vào Tập tài liệu">
+                    <i class="fa-solid fa-folder-tree text-[10px]"></i>
+                  </button>
+                  <button type="button" onclick="duplicateDocFromHome('${doc.id}', event)" class="w-6 h-6 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-blue-500 flex items-center justify-center" title="Nhân bản file">
+                    <i class="fa-solid fa-copy text-[10px]"></i>
+                  </button>
+                  <button type="button" onclick="moveDocumentToTrash('${doc.id}', event)" class="w-6 h-6 rounded hover:bg-rose-500/10 text-rose-500 flex items-center justify-center" title="Chuyển vào Thùng rác (30 ngày)">
+                    <i class="fa-solid fa-trash-can text-[10px]"></i>
+                  </button>
+                </div>
+              `}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // --- Home Card Actions, Multi-Select, Drag & Drop ---
+    function toggleStarFromHome(docId, event) {
+      if (event) event.stopPropagation();
+      const doc = appState.documents[docId];
+      if (!doc) return;
+      doc.starred = !doc.starred;
+      safeLocalSet('docucanvas_docs_map_v3', appState.documents);
+      renderHomeDashboard();
+    }
+
+    function duplicateDocFromHome(docId, event) {
+      if (event) event.stopPropagation();
+      const orig = appState.documents[docId];
+      if (!orig) return;
+      const copy = JSON.parse(JSON.stringify(orig));
+      copy.id = `doc_${Date.now()}`;
+      copy.title = `${orig.title} (Bản sao)`;
+      copy.updatedAt = new Date().toISOString();
+      copy.lastOpenedAt = new Date().toISOString();
+      appState.documents[copy.id] = copy;
+      safeLocalSet('docucanvas_docs_map_v3', appState.documents);
+      renderHomeDashboard();
+      showToast(`Đã nhân bản: ${copy.title}`, 'success');
+    }
+
+    function openRenameDocModal(docId, event) {
+      if (event) event.stopPropagation();
+      const doc = appState.documents[docId];
+      if (!doc) return;
+      appState.renamingDocId = docId;
+      const inp = document.getElementById('rename-doc-input');
+      if (inp) inp.value = doc.title || '';
+      openModal('modal-rename-doc');
+    }
+
+    function confirmRenameDocModal() {
+      const doc = appState.renamingDocId ? appState.documents[appState.renamingDocId] : null;
+      const inp = document.getElementById('rename-doc-input');
+      if (doc && inp && inp.value.trim()) {
+        doc.title = inp.value.trim();
+        doc.updatedAt = new Date().toISOString();
+        safeLocalSet('docucanvas_docs_map_v3', appState.documents);
+        if (appState.currentDocId === doc.id) {
+          document.getElementById('doc-title-input').value = doc.title;
+        }
+        renderHomeDashboard();
+        renderSidebarFilesList();
+        showToast(`Đã đổi tên thành: ${doc.title}`, 'success');
+      }
+      closeModal('modal-rename-doc');
+    }
+
+    function toggleSelectHomeDoc(docId, checked) {
+      if (checked) {
+        if (!appState.selectedHomeDocIds.includes(docId)) {
+          appState.selectedHomeDocIds.push(docId);
+        }
+      } else {
+        appState.selectedHomeDocIds = appState.selectedHomeDocIds.filter((id) => id !== docId);
+      }
+      renderHomeDashboard();
+    }
+
+    function selectAllHomeDocs() {
+      const isTrash = appState.homeFilter === 'trash';
+      const visibleDocs = Object.values(appState.documents).filter((d) => isTrash ? !!d.isTrashed : !d.isTrashed);
+      if (appState.selectedHomeDocIds.length === visibleDocs.length) {
+        appState.selectedHomeDocIds = [];
+      } else {
+        appState.selectedHomeDocIds = visibleDocs.map((d) => d.id);
+      }
+      renderHomeDashboard();
+    }
+
+    function clearHomeBatchSelection() {
+      appState.selectedHomeDocIds = [];
+      renderHomeDashboard();
+    }
+
+    function handleDocCardDragStart(event, docId) {
+      event.dataTransfer.setData('text/plain', docId);
+    }
+
+    function handleCollectionDragOver(event, el) {
+      event.preventDefault();
+      if (el) el.classList.add('collection-drop-active');
+    }
+
+    function handleCollectionDragLeave(event, el) {
+      if (el) el.classList.remove('collection-drop-active');
+    }
+
+    function handleCollectionDrop(event, targetCollectionId, el) {
+      event.preventDefault();
+      if (el) el.classList.remove('collection-drop-active');
+      const docId = event.dataTransfer.getData('text/plain');
+      const doc = appState.documents[docId];
+      const col = appState.collections[targetCollectionId];
+      if (doc && col) {
+        doc.collectionId = targetCollectionId;
+        doc.previousCollectionId = targetCollectionId;
+        safeLocalSet('docucanvas_docs_map_v3', appState.documents);
+        renderHomeDashboard();
+        renderSidebarFilesList();
+        showToast(`Đã chuyển "${doc.title}" vào Tập "${col.name}"`, 'success');
+      }
+    }
+
+    // --- Collection CRUD & Batch Grouping ---
+    function openCollectionModal(colId = null, event = null) {
+      if (event) event.stopPropagation();
+      appState.editingCollectionId = colId;
+      const titleEl = document.getElementById('collection-modal-title');
+      const nameInp = document.getElementById('collection-name-input');
+      const colorSel = document.getElementById('collection-color-select');
+      const iconSel = document.getElementById('collection-icon-select');
+
+      if (colId && appState.collections[colId]) {
+        const c = appState.collections[colId];
+        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-pen text-indigo-500 mr-2"></i>Chỉnh sửa Tập Tài Liệu`;
+        if (nameInp) nameInp.value = c.name;
+        if (colorSel) colorSel.value = c.color;
+        if (iconSel) iconSel.value = c.icon || 'fa-folder';
+      } else {
+        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-folder-plus text-indigo-500 mr-2"></i>Tạo Tập Tài Liệu Mới`;
+        if (nameInp) nameInp.value = '';
+        if (colorSel) colorSel.value = '#4f46e5';
+        if (iconSel) iconSel.value = 'fa-folder';
+      }
+      openModal('modal-collection-editor');
+    }
+
+    function saveCollectionFromModal() {
+      const name = document.getElementById('collection-name-input').value.trim();
+      const color = document.getElementById('collection-color-select').value || '#4f46e5';
+      const icon = document.getElementById('collection-icon-select').value || 'fa-folder';
+      if (!name) {
+        showToast('Vui lòng nhập tên Tập tài liệu', 'warn');
+        return;
+      }
+      const id = appState.editingCollectionId || `col_${Date.now()}`;
+      appState.collections[id] = {
+        id,
+        name,
+        color,
+        icon,
+        createdAt: (appState.collections[id] && appState.collections[id].createdAt) || new Date().toISOString()
+      };
+      saveCollectionsState();
+      closeModal('modal-collection-editor');
+      renderHomeDashboard();
+      renderSidebarFilesList();
+      showToast(`Đã lưu Tập tài liệu: ${name}`, 'success');
+    }
+
+    function openDeleteCollectionModal(colId, event) {
+      if (event) event.stopPropagation();
+      const col = appState.collections[colId];
+      if (!col) return;
+      appState.deletingCollectionId = colId;
+      const desc = document.getElementById('delete-collection-desc');
+      if (desc) {
+        desc.textContent = `Bạn đang chọn xử lý Tập tài liệu "${col.name}". Hãy chọn 1 trong 2 phương án an toàn dưới đây:`;
+      }
+      openModal('modal-delete-collection');
+    }
+
+    function confirmDissolveCollectionKeepFiles() {
+      const colId = appState.deletingCollectionId;
+      const col = colId ? appState.collections[colId] : null;
+      if (!col) return;
+      Object.values(appState.documents).forEach((d) => {
+        if (d.collectionId === colId) {
+          d.collectionId = null;
+        }
+      });
+      delete appState.collections[colId];
+      if (appState.homeFilter === colId) appState.homeFilter = 'all';
+      saveCollectionsState();
+      safeLocalSet('docucanvas_docs_map_v3', appState.documents);
+      closeModal('modal-delete-collection');
+      renderHomeDashboard();
+      renderSidebarFilesList();
+      showToast(`Đã giải tán Tập "${col.name}" (Các file bên trong được giữ nguyên ở mục Chưa phân loại)`);
+    }
+
+    function confirmTrashCollectionAndFiles() {
+      const colId = appState.deletingCollectionId;
+      const col = colId ? appState.collections[colId] : null;
+      if (!col) return;
+      const now = Date.now();
+      const trashedIds = [];
+      Object.values(appState.documents).forEach((d) => {
+        if (d.collectionId === colId && !d.isTrashed) {
+          d.previousCollectionId = colId;
+          d.isTrashed = true;
+          d.trashedAt = now;
+          trashedIds.push(d.id);
+        }
+      });
+      appState.lastTrashedDocIds = trashedIds;
+      if (appState.homeFilter === colId) appState.homeFilter = 'all';
+      safeLocalSet('docucanvas_docs_map_v3', appState.documents);
+      closeModal('modal-delete-collection');
+      renderHomeDashboard();
+      renderSidebarFilesList();
+      showTrashToastWithUndo(`Đã chuyển các file thuộc Tập "${col.name}" vào Thùng rác (lưu 30 ngày)`);
+    }
+
+    function openMoveCollectionModalForDoc(docId, event) {
+      if (event) event.stopPropagation();
+      appState.movingDocIds = [docId];
+      renderMoveCollectionModalList();
+      openModal('modal-move-collection');
+    }
+
+    function openBatchCollectionModal() {
+      if (!appState.selectedHomeDocIds.length) return;
+      appState.movingDocIds = [...appState.selectedHomeDocIds];
+      renderMoveCollectionModalList();
+      openModal('modal-move-collection');
+    }
+
+    function renderMoveCollectionModalList() {
+      const list = document.getElementById('move-collection-list');
+      if (!list) return;
+      const cols = Object.values(appState.collections);
+      list.innerHTML = `
+        <button type="button" onclick="assignDocsToCollection(null)" class="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-500 flex items-center gap-2.5 text-left">
+          <span class="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center"><i class="fa-regular fa-file"></i></span>
+          <span class="font-semibold">Chưa phân loại (Gỡ khỏi Tập)</span>
+        </button>
+        ${cols.map((c) => `
+          <button type="button" onclick="assignDocsToCollection('${c.id}')" class="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-500 flex items-center gap-2.5 text-left">
+            <span class="w-6 h-6 rounded-lg text-white flex items-center justify-center" style="background-color:${c.color}">
+              <i class="fa-solid ${c.icon || 'fa-folder'}"></i>
+            </span>
+            <span class="font-semibold">${escapeHtmlStr(c.name)}</span>
+          </button>
+        `).join('')}
+      `;
+    }
+
+    function assignDocsToCollection(colId) {
+      const targetIds = appState.movingDocIds || [];
+      targetIds.forEach((id) => {
+        if (appState.documents[id]) {
+          appState.documents[id].collectionId = colId;
+          appState.documents[id].previousCollectionId = colId;
+        }
+      });
+      appState.selectedHomeDocIds = [];
+      safeLocalSet('docucanvas_docs_map_v3', appState.documents);
+      closeModal('modal-move-collection');
+      renderHomeDashboard();
+      renderSidebarFilesList();
+      const colName = colId && appState.collections[colId] ? appState.collections[colId].name : 'Chưa phân loại';
+      showToast(`Đã chuyển ${targetIds.length} tài liệu vào "${colName}"`, 'success');
+    }
+
+    // --- 30-Day Smart Trash Operations (Soft Delete, Undo Toast, Restore, Preview, Purge) ---
+    function showTrashToastWithUndo(msg) {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = 'pointer-events-auto px-4 py-2.5 rounded-xl border-l-4 border-amber-500 bg-slate-900 text-white shadow-2xl text-xs flex items-center gap-3';
+      toast.innerHTML = `
+        <span><i class="fa-solid fa-trash-can text-amber-400 mr-1.5"></i>${escapeHtmlStr(msg)}</span>
+        <button type="button" onclick="undoLastTrashAction(); this.parentElement.remove();" class="px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 shrink-0">
+          Hoàn tác
+        </button>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => {
+        if (toast.parentElement) toast.remove();
+      }, 6000);
+    }
+
+    function moveDocumentToTrash(docId, event = null) {
+      if (event) event.stopPropagation();
+      const doc = appState.documents[docId];
+      if (!doc) return;
+      doc.previousCollectionId = doc.collectionId || null;
+      doc.isTrashed = true;
+      doc.trashedAt = Date.now();
+      appState.lastTrashedDocIds = [docId];
+      safeLocalSet('docucanvas_docs_map_v3', appState.documents);
+
+      // If currently editing this document, switch to another active document or return to Home Dashboard
+      if (appState.currentView === 'editor' && appState.currentDocId === docId) {
+        const remainingActive = Object.values(appState.documents).filter((d) => !d.isTrashed);
+        if (remainingActive.length > 0) {
+          loadDocumentIntoWorkspace(remainingActive[0]);
+        } else {
+          switchAppView('home');
+        }
+      }
+      renderHomeDashboard();
+      renderSidebarFilesList();
+      showTrashToastWithUndo(`Đã chuyển "${doc.title}" vào Thùng rác (lưu giữ 30 ngày)`);
+    }
+
+    function batchMoveSelectedToTrash() {
+      if (!appState.selectedHomeDocIds.length) return;
+      const now = Date.now();
+      const moved = [];
+      appState.selectedHomeDocIds.forEach((id) => {
+        const d = appState.documents[id];
+        if (d && !d.isTrashed) {
+          d.previousCollectionId = d.collectionId || null;
+          d.isTrashed = true;
+          d.trashedAt = now;
+          moved.push(id);
+        }
+      });
+      appState.lastTrashedDocIds = moved;
+      appState.selectedHomeDocIds = [];
+      safeLocalSet('docucanvas_docs_map_v3', appState.documents);
+      renderHomeDashboard();
+      renderSidebarFilesList();
+      showTrashToastWithUndo(`Đã chuyển ${moved.length} tài liệu vào Thùng rác (30 ngày)`);
+    }
+
+    function undoLastTrashAction() {
+      const ids = appState.lastTrashedDocIds || [];
+      if (!ids.length) return;
+      ids.forEach((id) => {
+        const d = appState.documents[id];
+        if (d) {
+          d.isTrashed = false;
+          d.trashedAt = null;
+          if (d.previousCollectionId && appState.collections[d.previousCollectionId]) {
+            d.collectionId = d.previousCollectionId;
+          }
+        }
+      });
+      appState.lastTrashedDocIds = [];
+      safeLocalSet('docucanvas_docs_map_v3', appState.documents);
+      renderHomeDashboard();
+      renderSidebarFilesList();
+      showToast('Đã hoàn tác và khôi phục tài liệu về vị trí cũ!', 'success');
+    }
+
+    function restoreDocumentFromTrash(docId) {
+      const doc = appState.documents[docId];
+      if (!doc) return;
+      doc.isTrashed = false;
+      doc.trashedAt = null;
+      if (doc.previousCollectionId && appState.collections[doc.previousCollectionId]) {
+        doc.collectionId = doc.previousCollectionId;
+      }
+      safeLocalSet('docucanvas_docs_map_v3', appState.documents);
+      renderHomeDashboard();
+      renderSidebarFilesList();
+      showToast(`Đã khôi phục "${doc.title}" về đúng Tập ban đầu!`, 'success');
+    }
+
+    function restoreSelectedTrashedDocs() {
+      const targetIds = appState.selectedHomeDocIds.length
+        ? appState.selectedHomeDocIds
+        : Object.values(appState.documents).filter((d) => !!d.isTrashed).map((d) => d.id);
+      if (!targetIds.length) {
+        showToast('Không có mục nào trong Thùng rác để khôi phục', 'warn');
+        return;
+      }
+      targetIds.forEach((id) => {
+        const d = appState.documents[id];
+        if (d && d.isTrashed) {
+          d.isTrashed = false;
+          d.trashedAt = null;
+          if (d.previousCollectionId && appState.collections[d.previousCollectionId]) {
+            d.collectionId = d.previousCollectionId;
+          }
+        }
+      });
+      appState.selectedHomeDocIds = [];
+      safeLocalSet('docucanvas_docs_map_v3', appState.documents);
+      renderHomeDashboard();
+      renderSidebarFilesList();
+      showToast(`Đã khôi phục ${targetIds.length} tài liệu từ Thùng rác!`, 'success');
+    }
+
+    function openTrashPreviewModal(docId) {
+      const doc = appState.documents[docId];
+      if (!doc) return;
+      appState.previewTrashDocId = docId;
+      const daysLeft = getRemainingTrashDays(doc.trashedAt);
+      document.getElementById('trash-preview-title').textContent = doc.title;
+      document.getElementById('trash-preview-countdown').textContent = `Tự động xóa sau ${daysLeft} ngày (${Object.keys(doc.zones || {}).length} khung vẽ đa lớp được bảo toàn)`;
+      document.getElementById('trash-preview-body').innerHTML = doc.htmlContent || '<p><em>(Không có nội dung văn bản)</em></p>';
+      openModal('modal-trash-preview');
+    }
+
+    function restoreAndOpenFromPreview() {
+      const docId = appState.previewTrashDocId;
+      closeModal('modal-trash-preview');
+      if (!docId) return;
+      restoreDocumentFromTrash(docId);
+      switchAppView('editor', docId);
+    }
+
+    function deleteForeverFromPreview() {
+      const docId = appState.previewTrashDocId;
+      closeModal('modal-trash-preview');
+      if (!docId) return;
+      openSinglePurgeConfirmModal(docId);
+    }
+
+    function openSinglePurgeConfirmModal(docId) {
+      const doc = appState.documents[docId];
+      if (!doc) return;
+      appState.pendingPurgeAction = { type: 'single', docId };
+      document.getElementById('confirm-purge-desc').textContent = `Bạn có chắc chắn muốn xóa vĩnh viễn tài liệu "${doc.title}"? Mọi văn bản và các lớp vẽ bên trong sẽ bị xóa hoàn toàn khỏi bộ nhớ.`;
+      openModal('modal-confirm-purge');
+    }
+
+    function openEmptyTrashConfirmModal() {
+      const trashed = Object.values(appState.documents).filter((d) => !!d.isTrashed);
+      if (!trashed.length) {
+        showToast('Thùng rác hiện đang trống', 'info');
+        return;
+      }
+      appState.pendingPurgeAction = { type: 'emptyAll' };
+      document.getElementById('confirm-purge-desc').textContent = `Bạn sắp dọn sạch vĩnh viễn toàn bộ ${trashed.length} tài liệu trong Thùng rác. Hành động này không thể hoàn tác.`;
+      openModal('modal-confirm-purge');
+    }
+
+    function executeConfirmedPurge() {
+      const action = appState.pendingPurgeAction;
+      closeModal('modal-confirm-purge');
+      if (!action) return;
+      if (action.type === 'single' && action.docId) {
+        delete appState.documents[action.docId];
+        showToast('Đã xóa vĩnh viễn tài liệu khỏi bộ nhớ');
+      } else if (action.type === 'emptyAll') {
+        Object.values(appState.documents).forEach((d) => {
+          if (d.isTrashed) delete appState.documents[d.id];
+        });
+        showToast('Đã dọn sạch toàn bộ Thùng rác');
+      }
+      appState.pendingPurgeAction = null;
+      appState.selectedHomeDocIds = [];
+      safeLocalSet('docucanvas_docs_map_v3', appState.documents);
+      renderHomeDashboard();
+      renderSidebarFilesList();
+    }
+
     // --- Application Bootstrap on Window Load ---
     window.addEventListener('DOMContentLoaded', async () => {
       await initIndexedDB();
@@ -4796,22 +6813,58 @@ git push -u origin main</pre>
       }
       updateUserProfileUI();
 
-      // Load Saved Documents or Initialize Default Showcase Document
-      const savedDocs = safeLocalGet('docucanvas_docs_map_v2', null);
+      // Restore Collections & Auto-Tilde Setting
+      const savedCols = safeLocalGet('docucanvas_collections_v1', null);
+      appState.collections = (savedCols && Object.keys(savedCols).length > 0) ? savedCols : buildDefaultCollections();
+      saveCollectionsState();
+
+      appState.autoTildeEnabled = safeLocalGet('docucanvas_auto_tilde', true);
+
+      // Load Saved Documents (v3 includes pre-seeded Collections & Smart Tilde demo doc)
+      const savedDocs = safeLocalGet('docucanvas_docs_map_v3', null);
       const savedActiveId = safeLocalGet('docucanvas_active_doc_id_v2', 'doc_default_01');
 
       if (savedDocs && Object.keys(savedDocs).length > 0) {
         appState.documents = savedDocs;
-        const initialDoc = appState.documents[savedActiveId] || Object.values(appState.documents)[0];
-        loadDocumentIntoWorkspace(initialDoc);
       } else {
-        const defaultDoc = buildTemplateDocument('doc_default_01', 'architecture');
-        appState.documents[defaultDoc.id] = defaultDoc;
-        loadDocumentIntoWorkspace(defaultDoc);
-        saveCurrentDocumentNow();
+        const docArch = buildTemplateDocument('doc_default_01', 'architecture');
+        docArch.collectionId = 'col_ai';
+        docArch.previousCollectionId = 'col_ai';
+        docArch.lastOpenedAt = new Date().toISOString();
+
+        const docMath = buildTemplateDocument('doc_math_02', 'study');
+        const docReport = buildTemplateDocument('doc_report_03', 'report');
+
+        appState.documents = {
+          [docArch.id]: docArch,
+          [docMath.id]: docMath,
+          [docReport.id]: docReport
+        };
+        safeLocalSet('docucanvas_docs_map_v3', appState.documents);
+      }
+
+      // Run 30-day automatic trash purge on startup
+      runAutoPurge30Days();
+
+      // Load initial document into editor in background so Editor DOM is always ready
+      const initialDoc = appState.documents[savedActiveId] || Object.values(appState.documents).find((d) => !d.isTrashed) || Object.values(appState.documents)[0];
+      if (initialDoc) {
+        loadDocumentIntoWorkspace(initialDoc);
       }
 
       initGlobalStageEvents();
+
+      // Default entry screen: Google Docs-style Home Screen Dashboard (unless URL hash specifies #/doc/:id)
+      if (window.location.hash && window.location.hash.startsWith('#/doc/')) {
+        const hashDocId = window.location.hash.replace('#/doc/', '').trim();
+        if (appState.documents[hashDocId] && !appState.documents[hashDocId].isTrashed) {
+          switchAppView('editor', hashDocId);
+        } else {
+          switchAppView('home');
+        }
+      } else {
+        switchAppView('home');
+      }
     });
   </script>
 </body>
