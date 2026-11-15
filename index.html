@@ -304,6 +304,41 @@
       overflow: hidden;
     }
 
+    /* Selected Inserted Elements inside Editor */
+    #editor-content hr {
+      border: none;
+      border-top: 2px solid #cbd5e1;
+      margin: 16px 0;
+      padding: 4px 0;
+      cursor: pointer;
+      transition: border-color 0.15s ease;
+    }
+    #editor-content hr:hover {
+      border-top-color: var(--accent-primary);
+    }
+    .doc-selected-node {
+      outline: 2px solid var(--accent-primary) !important;
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+    #element-context-pill {
+      position: absolute;
+      z-index: 65;
+      display: none;
+      align-items: center;
+      gap: 4px;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(8px);
+      color: #f8fafc;
+      padding: 3px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.25);
+      border: 1px solid rgba(99, 102, 241, 0.45);
+      white-space: nowrap;
+      user-select: none;
+    }
+
     /* Interactive Drawing Zone Container */
     .drawing-zone {
       position: absolute;
@@ -1189,6 +1224,9 @@
             <div id="creation-marquee">
               <div id="creation-marquee-label">0 × 0 px</div>
             </div>
+
+            <!-- Floating Context Action Pill for any selected created element (Table, Image, Checklist, Code, Quote, HR, Link) -->
+            <div id="element-context-pill"></div>
 
             <!-- LAYER 2: BEHIND TEXT (UNDERLAY LAYER, z-index: 10) -->
             <div id="underlay-layer"></div>
@@ -2180,10 +2218,178 @@ git push -u origin main</pre>
       scheduleAutoSave();
     }
 
+    let selectedEditorNode = null;
+
+    function clearSelectedEditorNode() {
+      if (selectedEditorNode) {
+        selectedEditorNode.classList.remove('doc-selected-node');
+        selectedEditorNode = null;
+      }
+      const pill = document.getElementById('element-context-pill');
+      if (pill) pill.style.display = 'none';
+    }
+
+    function deleteSelectedEditorNode() {
+      if (!selectedEditorNode) return;
+      const label = getEditorNodeLabel(selectedEditorNode);
+      const nodeToRemove = selectedEditorNode;
+      clearSelectedEditorNode();
+      nodeToRemove.remove();
+      handleEditorInput();
+      showToast(`Đã xóa ${label}`);
+    }
+
+    function getEditorNodeLabel(el) {
+      if (!el) return 'phần tử';
+      if (el.tagName === 'IMG') return 'Hình ảnh';
+      if (el.tagName === 'TABLE') return 'Bảng biểu';
+      if (el.tagName === 'PRE') return 'Khối Code';
+      if (el.tagName === 'BLOCKQUOTE') return 'Khối trích dẫn';
+      if (el.tagName === 'HR') return 'Đường kẻ ngang';
+      if (el.tagName === 'A') return 'Liên kết';
+      if (el.classList && el.classList.contains('doc-checklist')) return 'Danh sách công việc';
+      return 'phần tử';
+    }
+
+    function addChecklistItemToSelected() {
+      if (!selectedEditorNode || !selectedEditorNode.classList.contains('doc-checklist')) return;
+      const item = document.createElement('label');
+      item.className = 'flex items-center gap-2 cursor-pointer select-text';
+      item.innerHTML = `
+        <input type="checkbox" onchange="this.nextElementSibling.classList.toggle('line-through', this.checked); this.nextElementSibling.classList.toggle('text-slate-400', this.checked);" class="w-4 h-4 rounded text-indigo-600" />
+        <span>Mục công việc mới</span>
+      `;
+      selectedEditorNode.appendChild(item);
+      handleEditorInput();
+      positionElementContextPill(selectedEditorNode);
+    }
+
+    function resizeSelectedImage(pct) {
+      if (!selectedEditorNode || selectedEditorNode.tagName !== 'IMG') return;
+      selectedEditorNode.style.width = pct;
+      handleEditorInput();
+      positionElementContextPill(selectedEditorNode);
+    }
+
+    function unwrapSelectedLink() {
+      if (!selectedEditorNode || selectedEditorNode.tagName !== 'A') return;
+      const textNode = document.createTextNode(selectedEditorNode.textContent || '');
+      selectedEditorNode.replaceWith(textNode);
+      clearSelectedEditorNode();
+      handleEditorInput();
+      showToast('Đã gỡ liên kết');
+    }
+
+    function modifySelectedTable(action) {
+      const table = (selectedEditorNode && selectedEditorNode.tagName === 'TABLE') ? selectedEditorNode : null;
+      if (!table) {
+        modifyActiveTable(action);
+        return;
+      }
+      const activeCell = document.activeElement ? document.activeElement.closest('td, th') : null;
+      const rowIdx = activeCell ? activeCell.parentElement.rowIndex : table.rows.length - 1;
+      const colIdx = activeCell ? activeCell.cellIndex : (table.rows[0] ? table.rows[0].cells.length - 1 : 0);
+
+      if (action === 'addRow') {
+        const cols = table.rows[0] ? table.rows[0].cells.length : 3;
+        const tr = table.insertRow(rowIdx + 1);
+        for (let c = 0; c < cols; c++) {
+          const td = tr.insertCell(-1);
+          td.textContent = 'Ô mới';
+        }
+      } else if (action === 'addCol') {
+        for (let r = 0; r < table.rows.length; r++) {
+          const cell = table.rows[r].insertCell(colIdx + 1);
+          cell.textContent = r === 0 ? 'Cột mới' : 'Ô mới';
+        }
+      } else if (action === 'delRow') {
+        if (table.rows.length <= 1) {
+          deleteSelectedEditorNode();
+          return;
+        }
+        table.deleteRow(rowIdx);
+      } else if (action === 'delCol') {
+        if (table.rows[0] && table.rows[0].cells.length <= 1) {
+          deleteSelectedEditorNode();
+          return;
+        }
+        for (let r = 0; r < table.rows.length; r++) {
+          table.rows[r].deleteCell(colIdx);
+        }
+      }
+      handleEditorInput();
+      positionElementContextPill(table);
+    }
+
+    function positionElementContextPill(el) {
+      const pill = document.getElementById('element-context-pill');
+      const docPage = document.getElementById('doc-page');
+      if (!pill || !docPage || !el) return;
+
+      const pageRect = docPage.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const topPx = Math.max(8, (elRect.top - pageRect.top) / appState.pageZoom - 32);
+      const leftPx = Math.max(12, Math.min(pageRect.width - 260, (elRect.left - pageRect.left) / appState.pageZoom));
+
+      const label = getEditorNodeLabel(el);
+      let extraBtns = '';
+
+      if (el.tagName === 'TABLE') {
+        extraBtns = `
+          <button type="button" onclick="modifySelectedTable('addRow')" class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600">+Hàng</button>
+          <button type="button" onclick="modifySelectedTable('addCol')" class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600">+Cột</button>
+          <button type="button" onclick="modifySelectedTable('delRow')" class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-rose-800">-Hàng</button>
+          <button type="button" onclick="modifySelectedTable('delCol')" class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-rose-800">-Cột</button>
+        `;
+      } else if (el.tagName === 'IMG') {
+        extraBtns = `
+          <button type="button" onclick="resizeSelectedImage('50%')" class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600">50%</button>
+          <button type="button" onclick="resizeSelectedImage('100%')" class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600">100%</button>
+        `;
+      } else if (el.classList && el.classList.contains('doc-checklist')) {
+        extraBtns = `
+          <button type="button" onclick="addChecklistItemToSelected()" class="px-1.5 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500">+ Thêm mục</button>
+        `;
+      } else if (el.tagName === 'A') {
+        extraBtns = `
+          <button type="button" onclick="unwrapSelectedLink()" class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600">Gỡ link</button>
+        `;
+      }
+
+      const shortcutHint = (el.tagName === 'IMG' || el.tagName === 'HR') ? 'Delete' : 'Shift+Delete';
+      pill.innerHTML = `
+        <span class="font-semibold text-indigo-300 mr-1">${label}</span>
+        ${extraBtns}
+        <button type="button" onclick="deleteSelectedEditorNode()" class="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-semibold flex items-center gap-1" title="Xóa ${label} (${shortcutHint})">
+          <i class="fa-solid fa-trash-can"></i> Xóa
+        </button>
+      `;
+      pill.style.top = `${topPx}px`;
+      pill.style.left = `${leftPx}px`;
+      pill.style.display = 'flex';
+    }
+
     function handleEditorClick(e) {
-      // If clicking inside editor outside an inline drawing zone, deselect active zone unless creating
       if (!e.target.closest('.drawing-zone') && !appState.createZoneMode) {
         selectDrawingZone(null);
+      }
+      // Check if user clicked on a creatable/deletable element inside the editor
+      const target = e.target.closest('img, hr, table, pre, blockquote, .doc-checklist, a');
+      if (target && document.getElementById('editor-content').contains(target)) {
+        if (selectedEditorNode && selectedEditorNode !== target) {
+          selectedEditorNode.classList.remove('doc-selected-node');
+        }
+        selectedEditorNode = target;
+        selectedEditorNode.classList.add('doc-selected-node');
+        // If IMG or HR, blur contenteditable text cursor so direct Delete/Backspace key deletes the object immediately
+        if (target.tagName === 'IMG' || target.tagName === 'HR') {
+          if (document.activeElement && document.activeElement.id === 'editor-content') {
+            document.activeElement.blur();
+          }
+        }
+        positionElementContextPill(target);
+      } else if (!e.target.closest('#element-context-pill')) {
+        clearSelectedEditorNode();
       }
     }
 
@@ -2281,6 +2487,12 @@ git push -u origin main</pre>
         </button>
         <button type="button" onclick="resetZoneViewport('${zone.id}', event)" class="px-1.5 py-0.5 rounded bg-white/20 hover:bg-white/30 text-[10px]" title="Reset góc nhìn Zoom 100%">
           100%
+        </button>
+        <button type="button" onclick="clearZoneById('${zone.id}', event)" class="px-1.5 py-0.5 rounded bg-amber-500/80 hover:bg-amber-500 text-white text-[10px]" title="Xóa sạch nét vẽ bên trong khung này">
+          <i class="fa-solid fa-broom"></i>
+        </button>
+        <button type="button" onclick="deleteZoneById('${zone.id}', event)" class="px-1.5 py-0.5 rounded bg-rose-500/90 hover:bg-rose-600 text-white text-[10px]" title="Xóa bỏ Không gian vẽ này (hoặc nhấn phím Delete)">
+          <i class="fa-solid fa-trash-can"></i> Xóa
         </button>
       `;
       container.appendChild(headerBar);
@@ -2933,6 +3145,28 @@ git push -u origin main</pre>
           stopCreateZoneMode();
           closeAllTopDropdowns();
         }
+        if ((e.key === 'Delete' || e.key === 'Backspace') && appState.activeZoneId && document.activeElement !== document.getElementById('editor-content') && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+          e.preventDefault();
+          deleteActiveZone();
+          return;
+        }
+        if (selectedEditorNode && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+          const tag = selectedEditorNode.tagName;
+          // Direct Delete/Backspace for non-editable objects (IMG, HR) or Shift+Delete / Alt+Delete for any selected container (TABLE, PRE, BLOCKQUOTE, Checklist, A)
+          if ((e.key === 'Delete' || e.key === 'Backspace') && (tag === 'IMG' || tag === 'HR' || e.shiftKey || e.altKey)) {
+            e.preventDefault();
+            deleteSelectedEditorNode();
+            return;
+          }
+          // Also if inside an empty PRE, BLOCKQUOTE, or Checklist and pressing Backspace/Delete, remove the block cleanly
+          if ((e.key === 'Backspace' || e.key === 'Delete') && (tag === 'PRE' || tag === 'BLOCKQUOTE' || selectedEditorNode.classList.contains('doc-checklist'))) {
+            if ((selectedEditorNode.innerText || '').trim().length === 0) {
+              e.preventDefault();
+              deleteSelectedEditorNode();
+              return;
+            }
+          }
+        }
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
           e.preventDefault();
           openFindReplaceModal();
@@ -2953,6 +3187,12 @@ git push -u origin main</pre>
     // --- 3.6 Drawing Studio Toolbar Actions & Layer Switching ---
     function selectDrawingZone(zoneId) {
       appState.activeZoneId = zoneId;
+      if (zoneId) {
+        clearSelectedEditorNode();
+        if (document.activeElement && document.activeElement.id === 'editor-content') {
+          document.activeElement.blur();
+        }
+      }
       document.querySelectorAll('.drawing-zone').forEach((el) => {
         el.classList.toggle('selected', el.id === zoneId);
       });
@@ -3140,17 +3380,39 @@ git push -u origin main</pre>
       }, 'image/png');
     }
 
-    function deleteActiveZone() {
-      if (!appState.activeZoneId || !zonesMap[appState.activeZoneId]) return;
-      const zone = zonesMap[appState.activeZoneId];
+    function clearZoneById(zoneId, event) {
+      if (event) event.stopPropagation();
+      const zone = zonesMap[zoneId];
+      if (!zone) return;
+      zone.commands = [];
+      zone.redoStack = [];
+      renderZoneCanvas(zone);
+      scheduleAutoSave();
+      showToast(`Đã xóa sạch nét vẽ bên trong ${zone.name}`);
+    }
+
+    function deleteZoneById(zoneId, event) {
+      if (event) event.stopPropagation();
+      const zone = zonesMap[zoneId];
+      if (!zone) return;
       const el = document.getElementById(zone.id);
       if (el) el.remove();
-      delete zonesMap[appState.activeZoneId];
-      appState.activeZoneId = null;
+      delete zonesMap[zoneId];
+      if (appState.activeZoneId === zoneId) {
+        appState.activeZoneId = null;
+      }
       renderLayersSidebar();
       updateStatusBar();
       scheduleAutoSave();
-      showToast(`Đã xóa ${zone.name}`);
+      showToast(`Đã xóa hoàn toàn ${zone.name}`);
+    }
+
+    function deleteActiveZone() {
+      if (!appState.activeZoneId || !zonesMap[appState.activeZoneId]) {
+        showToast('Hãy nhấp chọn một Không gian vẽ trước khi xóa', 'warn');
+        return;
+      }
+      deleteZoneById(appState.activeZoneId);
     }
 
     function renderLayersSidebar() {
@@ -3175,6 +3437,9 @@ git push -u origin main</pre>
                 </button>
                 <button type="button" onclick="toggleZoneLock('${z.id}', event)" class="w-6 h-6 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-[11px]" title="Khóa/Mở khóa vẽ">
                   <i class="fa-solid ${z.locked ? 'fa-lock text-amber-500' : 'fa-lock-open text-slate-400'}"></i>
+                </button>
+                <button type="button" onclick="deleteZoneById('${z.id}', event)" class="w-6 h-6 rounded hover:bg-rose-100 dark:hover:bg-rose-950/60 text-rose-500 text-[11px]" title="Xóa khung vẽ này">
+                  <i class="fa-solid fa-trash-can"></i>
                 </button>
               </div>
             </div>
@@ -3369,10 +3634,17 @@ git push -u origin main</pre>
       if (!list) return;
       const docs = Object.values(appState.documents);
       list.innerHTML = docs.map((d) => `
-        <button type="button" onclick="switchToDocument('${d.id}')" class="w-full text-left px-2.5 py-2 rounded-lg text-xs flex items-center justify-between transition ${d.id === appState.currentDocId ? 'bg-indigo-600 text-white font-semibold' : 'hover:bg-slate-200/60 dark:hover:bg-slate-800'}">
-          <span class="truncate"><i class="fa-regular fa-file-lines mr-1.5"></i>${d.title}</span>
-          <span class="text-[10px] opacity-75 ml-1">${Object.keys(d.zones || {}).length}L</span>
-        </button>
+        <div class="group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition ${d.id === appState.currentDocId ? 'bg-indigo-600 text-white font-semibold' : 'hover:bg-slate-200/60 dark:hover:bg-slate-800'}">
+          <button type="button" onclick="switchToDocument('${d.id}')" class="truncate flex-1 text-left">
+            <i class="fa-regular fa-file-lines mr-1.5"></i>${d.title}
+          </button>
+          <div class="flex items-center gap-1 ml-1 shrink-0">
+            <span class="text-[10px] opacity-75">${Object.keys(d.zones || {}).length}L</span>
+            <button type="button" onclick="deleteDocumentById('${d.id}')" class="w-5 h-5 rounded hover:bg-rose-500 hover:text-white flex items-center justify-center opacity-70 hover:opacity-100" title="Xóa tài liệu này">
+              <i class="fa-solid fa-trash-can text-[10px]"></i>
+            </button>
+          </div>
+        </div>
       `).join('');
     }
 
@@ -3464,11 +3736,25 @@ git push -u origin main</pre>
             <div class="font-bold text-xs">${v.label}</div>
             <div class="text-[10px] text-slate-400">${new Date(v.timestamp).toLocaleString('vi-VN')} • ${Object.keys(v.zones || {}).length} Khung vẽ</div>
           </div>
-          <button type="button" onclick="restoreVersionSnapshot('${v.versionId}')" class="px-3 py-1 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-500">
-            Khôi phục
-          </button>
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="restoreVersionSnapshot('${v.versionId}')" class="px-3 py-1 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-500">
+              Khôi phục
+            </button>
+            <button type="button" onclick="deleteVersionSnapshot('${v.versionId}')" class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-500 text-xs" title="Xóa bản lưu Snapshot này">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
         </div>
       `).join('');
+    }
+
+    function deleteVersionSnapshot(versionId) {
+      const doc = appState.documents[appState.currentDocId];
+      if (!doc || !doc.versions) return;
+      doc.versions = doc.versions.filter((v) => v.versionId !== versionId);
+      saveCurrentDocumentNow();
+      renderVersionHistoryList();
+      showToast('Đã xóa bản lưu Snapshot');
     }
 
     function restoreVersionSnapshot(versionId) {
