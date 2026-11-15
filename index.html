@@ -174,13 +174,17 @@
       overflow: visible;
     }
 
-    /* 3-Layer Z-Index Architecture on Page */
+    /* 3-Layer Z-Index Architecture on Page
+       CRITICAL: #underlay-layer has z-index: auto so its children participate directly in #doc-page stacking context:
+       - Underlay <canvas> is z-index: 10 (strictly behind #editor-content text at z-index: 20)
+       - Underlay border drag edges, resize handles & floating header bar are z-index: 45 (strictly above #editor-content at z-index: 20)
+    */
     #underlay-layer {
       position: absolute;
       inset: 0;
-      z-index: 10;
+      z-index: auto;
       pointer-events: none;
-      overflow: hidden;
+      overflow: visible;
     }
 
     #editor-content {
@@ -195,6 +199,14 @@
       color: #1e293b;
       background: transparent;
       word-wrap: break-word;
+    }
+
+    /* When an Underlay zone is actively selected for drawing/panning, allow pointer events to pass through #editor-content to the Underlay canvas while keeping text visually on top (z-index: 20 > 10)! */
+    #editor-content.underlay-pass-through {
+      pointer-events: none !important;
+    }
+    #editor-content.underlay-pass-through .drawing-zone {
+      pointer-events: auto !important;
     }
 
     /* Ensure editor text nodes have transparent background by default so Underlay shows through */
@@ -301,7 +313,33 @@
       inset: 0;
       z-index: 30;
       pointer-events: none;
-      overflow: hidden;
+      overflow: visible;
+    }
+
+    /* Live Drop Target Indicator for Layer 3 Inline Drag-and-Drop Reflow */
+    #inline-drop-indicator {
+      position: absolute;
+      z-index: 90;
+      pointer-events: none;
+      display: none;
+      background: rgba(79, 70, 229, 0.14);
+      border: 2px dashed #4f46e5;
+      border-radius: 6px;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+      transition: all 0.06s ease;
+    }
+    #inline-drop-indicator-label {
+      position: absolute;
+      top: -22px;
+      left: 8px;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #ffffff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
     }
 
     /* Selected Inserted Elements inside Editor */
@@ -366,21 +404,51 @@
       box-shadow: 0 0 0 3px var(--accent-soft), 0 8px 25px -5px rgba(15, 23, 42, 0.15);
     }
 
-    /* Layer 3: Inline Mode (Break Text & Wrap Text) */
+    /* Layer 1 (Overlay) & Layer 2 (Underlay) positioning */
+    .drawing-zone.mode-overlay {
+      position: absolute;
+      z-index: 30;
+    }
+    .drawing-zone.mode-underlay {
+      position: absolute;
+      z-index: auto; /* Crucial: do NOT trap children in a z-index stacking context! */
+    }
+    .drawing-zone.mode-underlay > canvas {
+      position: relative;
+      z-index: 10; /* Visually behind #editor-content (z-index: 20) */
+    }
+    .drawing-zone.mode-overlay > canvas {
+      position: relative;
+      z-index: 30;
+    }
+
+    /* Layer 3: True DOM Flow Inline Modes (3A: Break Text, 3B: Float Left/Wrap Right, 3C: Float Right/Wrap Left, 3D: In Line with Text) */
     .drawing-zone.mode-inline-break {
       position: relative !important;
       display: block !important;
-      margin: 16px auto !important;
+      float: none !important;
       clear: both !important;
+      margin: 14px auto !important;
       left: auto !important;
       top: auto !important;
       z-index: 25;
     }
+    .drawing-zone.mode-inline-break[data-align="left"] {
+      margin: 14px auto 14px 0 !important;
+    }
+    .drawing-zone.mode-inline-break[data-align="center"] {
+      margin: 14px auto !important;
+    }
+    .drawing-zone.mode-inline-break[data-align="right"] {
+      margin: 14px 0 14px auto !important;
+    }
 
     .drawing-zone.mode-inline-wrap-left {
       position: relative !important;
+      display: block !important;
       float: left !important;
-      margin: 6px 20px 12px 0 !important;
+      clear: none !important;
+      margin: 6px 18px 10px 0 !important;
       left: auto !important;
       top: auto !important;
       z-index: 25;
@@ -388,11 +456,30 @@
 
     .drawing-zone.mode-inline-wrap-right {
       position: relative !important;
+      display: block !important;
       float: right !important;
-      margin: 6px 0 12px 20px !important;
+      clear: none !important;
+      margin: 6px 0 10px 18px !important;
       left: auto !important;
       top: auto !important;
       z-index: 25;
+    }
+
+    .drawing-zone.mode-inline-line {
+      position: relative !important;
+      display: inline-block !important;
+      vertical-align: middle !important;
+      float: none !important;
+      clear: none !important;
+      margin: 4px 8px !important;
+      left: auto !important;
+      top: auto !important;
+      z-index: 25;
+    }
+
+    .drawing-zone.dragging-inline {
+      opacity: 0.45 !important;
+      outline: 2px dashed #4f46e5 !important;
     }
 
     /* Click-through state for Overlay zones when not actively editing */
@@ -1105,11 +1192,12 @@
     <div class="flex items-center gap-1 bg-indigo-950/90 px-2 py-0.5 rounded-lg border border-indigo-400/40 shrink-0">
       <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-300">Chế độ Lớp:</span>
       <select id="active-zone-layer-select" onchange="changeActiveZoneLayerMode(this.value)" class="h-6 text-xs bg-indigo-900 text-white font-semibold rounded px-1.5 outline-none border border-indigo-400/30" title="Chuyển đổi 3 Lớp tương tác với Văn bản">
-        <option value="overlay">Lớp 1: Trên văn bản (Overlay)</option>
-        <option value="underlay">Lớp 2: Dưới văn bản (Behind Text)</option>
-        <option value="inline-break">Lớp 3A: Ngang văn bản (Ngắt dòng)</option>
-        <option value="inline-wrap-left">Lớp 3B: Bao quanh chữ (Trái)</option>
-        <option value="inline-wrap-right">Lớp 3C: Bao quanh chữ (Phải)</option>
+        <option value="overlay">Lớp 1: Trên chữ (Overlay)</option>
+        <option value="underlay">Lớp 2: Dưới chữ (Behind Text)</option>
+        <option value="inline-break">Lớp 3A: Ngang chữ — Chỉ Trên & Dưới (Break Text)</option>
+        <option value="inline-wrap-left">Lớp 3B: Ngang chữ — Khung Trái, Chữ bên Phải</option>
+        <option value="inline-wrap-right">Lớp 3C: Ngang chữ — Khung Phải, Chữ bên Trái</option>
+        <option value="inline-line">Lớp 3D: Ngang chữ — Nằm cùng dòng chữ (Inline)</option>
       </select>
 
       <button id="btn-zone-clickthrough" type="button" onclick="toggleActiveZoneClickThrough()" class="px-1.5 py-0.5 rounded text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600" title="Bật/Tắt Click-through (Xuyên chuột qua khung vẽ Lớp trên để sửa chữ bên dưới)">
@@ -1227,6 +1315,11 @@
 
             <!-- Floating Context Action Pill for any selected created element (Table, Image, Checklist, Code, Quote, HR, Link) -->
             <div id="element-context-pill"></div>
+
+            <!-- Live Drop Target Indicator when dragging an Inline (Layer 3) Drawing Zone across paragraphs -->
+            <div id="inline-drop-indicator">
+              <div id="inline-drop-indicator-label">Thả khung vẽ vào vị trí này</div>
+            </div>
 
             <!-- LAYER 2: BEHIND TEXT (UNDERLAY LAYER, z-index: 10) -->
             <div id="underlay-layer"></div>
@@ -2401,11 +2494,16 @@ git push -u origin main</pre>
       const map = {
         'overlay': 'Lớp 1: Trên chữ',
         'underlay': 'Lớp 2: Dưới chữ',
-        'inline-break': 'Lớp 3A: Ngắt dòng',
-        'inline-wrap-left': 'Lớp 3B: Bao chữ (Trái)',
-        'inline-wrap-right': 'Lớp 3C: Bao chữ (Phải)'
+        'inline-break': 'Lớp 3A: Trên & Dưới',
+        'inline-wrap-left': 'Lớp 3B: Chữ bên Phải',
+        'inline-wrap-right': 'Lớp 3C: Chữ bên Trái',
+        'inline-line': 'Lớp 3D: Cùng dòng'
       };
       return map[layerMode] || 'Lớp 1: Trên chữ';
+    }
+
+    function isInlineLayerMode(layerMode) {
+      return layerMode === 'inline-break' || layerMode === 'inline-wrap-left' || layerMode === 'inline-wrap-right' || layerMode === 'inline-line';
     }
 
     // --- 3.1 Drag-to-Create Drawing Zone on Document Page ---
@@ -2441,9 +2539,10 @@ git push -u origin main</pre>
         name: `Zone #${zoneCounter++}`,
         x: 90,
         y: 160 + (Object.keys(zonesMap).length * 40) % 300,
-        width: layerMode.startsWith('inline-wrap') ? 280 : 520,
-        height: 220,
+        width: (layerMode === 'inline-wrap-left' || layerMode === 'inline-wrap-right') ? 270 : (layerMode === 'inline-line' ? 180 : 520),
+        height: layerMode === 'inline-line' ? 95 : 210,
         layerMode: layerMode,
+        inlineAlign: 'center',
         clickThrough: false,
         visible: true,
         locked: false,
@@ -2462,84 +2561,140 @@ git push -u origin main</pre>
       showToast(`Đã chèn ${newZone.name} (${formatLayerName(layerMode)})`);
     }
 
-    // --- 3.2 Mount & Render Drawing Zone Container + Retina High-DPI Canvas ---
-    function mountDrawingZoneDOM(zone) {
-      const existing = document.getElementById(zone.id);
-      if (existing) existing.remove();
+    // --- 3.2 Mount & Update Drawing Zone Container + Retina High-DPI Canvas (Zero Data Loss on Layer Switch) ---
+    function buildZoneHeaderHTML(zone) {
+      const m = zone.layerMode;
+      const btnCls = (active) => active
+        ? 'px-1.5 py-0.5 rounded bg-white text-indigo-700 font-bold text-[10px] shadow-xs'
+        : 'px-1.5 py-0.5 rounded bg-white/15 hover:bg-white/30 text-white text-[10px]';
 
-      const container = document.createElement('div');
-      container.id = zone.id;
-      container.className = `drawing-zone ${appState.cleanZoneBorders ? 'zone-clean-view' : ''} ${zone.clickThrough ? 'click-through-active' : ''}`;
-      container.style.opacity = String(zone.zoneOpacity ?? 1.0);
-
-      // Position & Layer placement
-      applyZoneLayerPlacement(container, zone);
-
-      // Top Floating Header Bar (Move handle + Layer switcher + Quick actions)
-      const headerBar = document.createElement('div');
-      headerBar.className = 'zone-header-bar';
-      headerBar.innerHTML = `
-        <i class="fa-solid fa-arrows-up-down-left-right mr-1"></i>
-        <span>${zone.name}</span>
-        <span class="px-1.5 py-0.2 bg-white/20 rounded text-[10px] ml-1">${formatLayerName(zone.layerMode)}</span>
-        <button type="button" onclick="cycleZoneLayerMode('${zone.id}', event)" class="ml-1 px-1.5 py-0.5 rounded bg-white/20 hover:bg-white/30 text-[10px]" title="Đổi nhanh chế độ Lớp (Trên chữ / Dưới chữ / Ngang chữ)">
-          Đổi Lớp
-        </button>
-        <button type="button" onclick="resetZoneViewport('${zone.id}', event)" class="px-1.5 py-0.5 rounded bg-white/20 hover:bg-white/30 text-[10px]" title="Reset góc nhìn Zoom 100%">
+      return `
+        <i class="fa-solid fa-arrows-up-down-left-right mr-0.5" title="Nắm thanh này hoặc viền khung để kéo di chuyển"></i>
+        <span class="font-bold mr-1">${zone.name}</span>
+        <div class="flex items-center gap-0.5 bg-black/20 p-0.5 rounded" title="Chọn Lớp hiển thị & Vị trí chữ">
+          <button type="button" onclick="setZoneLayerDirect('${zone.id}', 'overlay', event)" class="${btnCls(m === 'overlay')}" title="Lớp 1: Nằm đè lên trên chữ (Overlay)">Trên chữ</button>
+          <button type="button" onclick="setZoneLayerDirect('${zone.id}', 'underlay', event)" class="${btnCls(m === 'underlay')}" title="Lớp 2: Nằm chìm dưới chữ (Behind Text)">Dưới chữ</button>
+          <button type="button" onclick="setZoneLayerDirect('${zone.id}', 'inline-break', event)" class="${btnCls(m === 'inline-break')}" title="Lớp 3A: Ngắt dòng — Chữ chỉ ở Trên & Dưới khung vẽ">↕ Trên-Dưới</button>
+          <button type="button" onclick="setZoneLayerDirect('${zone.id}', 'inline-wrap-left', event)" class="${btnCls(m === 'inline-wrap-left')}" title="Lớp 3B: Khung nằm Trái — Chữ tự động chảy bao bên Phải">◧ Chữ Phải</button>
+          <button type="button" onclick="setZoneLayerDirect('${zone.id}', 'inline-wrap-right', event)" class="${btnCls(m === 'inline-wrap-right')}" title="Lớp 3C: Khung nằm Phải — Chữ tự động chảy bao bên Trái">◨ Chữ Trái</button>
+          <button type="button" onclick="setZoneLayerDirect('${zone.id}', 'inline-line', event)" class="${btnCls(m === 'inline-line')}" title="Lớp 3D: Nằm ngay trên cùng dòng chữ (In Line with Text)">═ Cùng dòng</button>
+        </div>
+        <button type="button" onclick="resetZoneViewport('${zone.id}', event)" class="ml-0.5 px-1.5 py-0.5 rounded bg-white/20 hover:bg-white/30 text-[10px]" title="Reset góc nhìn Zoom 100%">
           100%
         </button>
         <button type="button" onclick="clearZoneById('${zone.id}', event)" class="px-1.5 py-0.5 rounded bg-amber-500/80 hover:bg-amber-500 text-white text-[10px]" title="Xóa sạch nét vẽ bên trong khung này">
           <i class="fa-solid fa-broom"></i>
         </button>
-        <button type="button" onclick="deleteZoneById('${zone.id}', event)" class="px-1.5 py-0.5 rounded bg-rose-500/90 hover:bg-rose-600 text-white text-[10px]" title="Xóa bỏ Không gian vẽ này (hoặc nhấn phím Delete)">
-          <i class="fa-solid fa-trash-can"></i> Xóa
+        <button type="button" onclick="deleteZoneById('${zone.id}', event)" class="px-1.5 py-0.5 rounded bg-rose-500/90 hover:bg-rose-600 text-white text-[10px]" title="Xóa bỏ Không gian vẽ này (Delete)">
+          <i class="fa-solid fa-trash-can"></i>
         </button>
       `;
-      container.appendChild(headerBar);
+    }
 
-      // 4 Border Edge Drag Strips (8-12px buffer around edges for moving the zone)
-      ['top', 'bottom', 'left', 'right'].forEach((edge) => {
-        const edgeEl = document.createElement('div');
-        edgeEl.className = `zone-edge-drag ${edge}`;
-        edgeEl.dataset.edgeMove = zone.id;
-        container.appendChild(edgeEl);
-      });
+    function mountDrawingZoneDOM(zone) {
+      let container = document.getElementById(zone.id);
+      let canvas = document.getElementById(`canvas_${zone.id}`);
+      let headerBar = container ? container.querySelector('.zone-header-bar') : null;
 
-      // 8 Resize Handles
-      ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].forEach((dir) => {
-        const handle = document.createElement('div');
-        handle.className = `resize-handle ${dir}`;
-        handle.dataset.resizeDir = dir;
-        handle.dataset.zoneId = zone.id;
-        container.appendChild(handle);
-      });
+      // Reuse existing DOM container & canvas if already mounted so switching layers NEVER loses canvas bitmap or state!
+      if (!container) {
+        container = document.createElement('div');
+        container.id = zone.id;
+        container.setAttribute('contenteditable', 'false');
 
-      // Viewport HUD (Bottom-right inside Zone: Zoom Out / Reset 100% / Zoom In / Pan indicator)
-      const hud = document.createElement('div');
-      hud.className = 'zone-viewport-hud';
-      hud.innerHTML = `
-        <button type="button" onclick="zoomZoneByButton('${zone.id}', -0.25, event)" class="px-1 hover:text-cyan-300" title="Thu nhỏ nội dung vẽ (-)">-</button>
-        <button type="button" onclick="resetZoneViewport('${zone.id}', event)" id="hud-zoom-${zone.id}" class="px-1 hover:text-cyan-300" title="Reset 100%">${Math.round(zone.viewport.scale * 100)}%</button>
-        <button type="button" onclick="zoomZoneByButton('${zone.id}', 0.25, event)" class="px-1 hover:text-cyan-300" title="Phóng to nội dung vẽ (+)">+</button>
-      `;
-      container.appendChild(hud);
+        // Top Floating Header Bar
+        headerBar = document.createElement('div');
+        headerBar.className = 'zone-header-bar';
+        container.appendChild(headerBar);
 
-      // High-DPI HTML5 Canvas
-      const canvas = document.createElement('canvas');
-      canvas.id = `canvas_${zone.id}`;
-      canvas.className = 'w-full h-full block rounded-[5px]';
-      container.appendChild(canvas);
+        // 4 Border Edge Drag Strips (10px buffer around edges for moving the zone from ANY layer, including Underlay!)
+        ['top', 'bottom', 'left', 'right'].forEach((edge) => {
+          const edgeEl = document.createElement('div');
+          edgeEl.className = `zone-edge-drag ${edge}`;
+          edgeEl.dataset.edgeMove = zone.id;
+          container.appendChild(edgeEl);
+        });
 
-      // Attach Interactive Events to Zone & Canvas
-      bindZoneInteractions(container, canvas, headerBar, zone);
+        // 8 Resize Handles
+        ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].forEach((dir) => {
+          const handle = document.createElement('div');
+          handle.className = `resize-handle ${dir}`;
+          handle.dataset.resizeDir = dir;
+          handle.dataset.zoneId = zone.id;
+          container.appendChild(handle);
+        });
 
-      // Size & Render High-DPI Canvas
+        // Viewport HUD
+        const hud = document.createElement('div');
+        hud.className = 'zone-viewport-hud';
+        hud.innerHTML = `
+          <button type="button" onclick="zoomZoneByButton('${zone.id}', -0.25, event)" class="px-1 hover:text-cyan-300" title="Thu nhỏ nội dung vẽ (-)">-</button>
+          <button type="button" onclick="resetZoneViewport('${zone.id}', event)" id="hud-zoom-${zone.id}" class="px-1 hover:text-cyan-300" title="Reset 100%">${Math.round(zone.viewport.scale * 100)}%</button>
+          <button type="button" onclick="zoomZoneByButton('${zone.id}', 0.25, event)" class="px-1 hover:text-cyan-300" title="Phóng to nội dung vẽ (+)">+</button>
+        `;
+        container.appendChild(hud);
+
+        // High-DPI HTML5 Canvas
+        canvas = document.createElement('canvas');
+        canvas.id = `canvas_${zone.id}`;
+        canvas.className = 'w-full h-full block rounded-[5px]';
+        container.appendChild(canvas);
+
+        bindZoneInteractions(container, canvas, headerBar, zone);
+      }
+
+      if (headerBar) {
+        headerBar.innerHTML = buildZoneHeaderHTML(zone);
+      }
+
+      // Apply opacity directly to <canvas> so .drawing-zone container stays opacity:1 (preserving z-index separation for Underlay handles!)
+      if (canvas) {
+        canvas.style.opacity = String(zone.zoneOpacity ?? 1.0);
+      }
+
+      // Position & Layer placement
+      applyZoneLayerPlacement(container, zone);
+
+      // Size & Render High-DPI Canvas preserving all vector/freehand commands
       resizeZoneCanvasBuffer(zone);
       renderZoneCanvas(zone);
     }
 
-    function applyZoneLayerPlacement(container, zone) {
-      container.classList.remove('mode-inline-break', 'mode-inline-wrap-left', 'mode-inline-wrap-right');
+    function ensureEditableParagraphsAroundZone(editor, container) {
+      if (!editor || !container || container.parentElement !== editor) return;
+      // Ensure there is an editable paragraph before and after a top-level inline-break zone so user can always type/press Enter above or below it
+      const prev = container.previousElementSibling;
+      if (!prev || prev.classList.contains('drawing-zone')) {
+        const pBefore = document.createElement('p');
+        pBefore.innerHTML = '<br/>';
+        editor.insertBefore(pBefore, container);
+      }
+      const next = container.nextElementSibling;
+      if (!next || next.classList.contains('drawing-zone')) {
+        const pAfter = document.createElement('p');
+        pAfter.innerHTML = '<br/>';
+        if (next) editor.insertBefore(pAfter, next);
+        else editor.appendChild(pAfter);
+      }
+    }
+
+    function applyZoneLayerPlacement(container, zone, customDropTarget = null) {
+      const docPage = document.getElementById('doc-page');
+      const editor = document.getElementById('editor-content');
+
+      // If transitioning FROM an inline mode TO overlay/underlay, capture its current visual offset on #doc-page so it doesn't jump!
+      if (!isInlineLayerMode(zone.layerMode) && container.parentElement && editor && editor.contains(container) && docPage) {
+        const pageRect = docPage.getBoundingClientRect();
+        const rect = container.getBoundingClientRect();
+        if (rect.width > 0) {
+          zone.x = Math.max(16, Math.round((rect.left - pageRect.left) / appState.pageZoom));
+          zone.y = Math.max(16, Math.round((rect.top - pageRect.top) / appState.pageZoom));
+        }
+      }
+
+      container.className = `drawing-zone mode-${zone.layerMode} ${appState.cleanZoneBorders ? 'zone-clean-view' : ''} ${zone.clickThrough ? 'click-through-active' : ''} ${appState.activeZoneId === zone.id ? 'selected' : ''} ${!zone.visible ? 'zone-hidden' : ''}`;
+      container.setAttribute('contenteditable', 'false');
+      container.dataset.align = zone.inlineAlign || 'center';
       container.style.width = `${zone.width}px`;
       container.style.height = `${zone.height}px`;
 
@@ -2557,26 +2712,214 @@ git push -u origin main</pre>
         if (underlayLayer && container.parentElement !== underlayLayer) {
           underlayLayer.appendChild(container);
         }
-      } else {
-        // Layer 3: Inline with Text (Break Text or Wrap Text Left/Right)
-        container.setAttribute('contenteditable', 'false');
-        container.classList.add(`mode-${zone.layerMode}`);
-        const editor = document.getElementById('editor-content');
-        if (editor && container.parentElement !== editor) {
-          // Insert at target paragraph based on zone.y or before first middle paragraph
-          const paragraphs = Array.from(editor.children).filter((el) => !el.classList.contains('drawing-zone'));
-          let inserted = false;
-          for (const p of paragraphs) {
-            if (p.offsetTop >= zone.y) {
-              editor.insertBefore(container, p);
-              inserted = true;
-              break;
+      } else if (editor) {
+        // LAYER 3: INLINE / FLOW WITH TEXT (3A: inline-break, 3B: inline-wrap-left, 3C: inline-wrap-right, 3D: inline-line)
+        container.style.left = 'auto';
+        container.style.top = 'auto';
+
+        // 1. Check if there is a saved anchor marker in editor from serialization
+        const savedAnchor = editor.querySelector(`[data-inline-zone-anchor="${zone.id}"]`);
+        if (savedAnchor) {
+          savedAnchor.replaceWith(container);
+          if (zone.layerMode === 'inline-break') ensureEditableParagraphsAroundZone(editor, container);
+          return;
+        }
+
+        // 2. If customDropTarget is provided from live Drag-and-Drop Reflow
+        if (customDropTarget) {
+          insertInlineZoneAtTarget(editor, container, zone, customDropTarget);
+          return;
+        }
+
+        // 3. If container is already inside #editor-content (e.g. switching between 3A, 3B, 3C, 3D)
+        if (editor.contains(container)) {
+          if (zone.layerMode === 'inline-line' && container.parentElement === editor) {
+            // Move into adjacent paragraph so text sits on the same line left & right
+            const nextP = container.nextElementSibling;
+            if (nextP && ['P', 'DIV', 'LI'].includes(nextP.tagName)) {
+              nextP.insertBefore(container, nextP.firstChild);
+            }
+          } else if (zone.layerMode === 'inline-break' && container.parentElement !== editor) {
+            // Move out of inline paragraph to become a clean block sibling between paragraphs
+            const hostBlock = container.closest('p, div, h1, h2, h3, h4, li, blockquote');
+            if (hostBlock && hostBlock.parentElement === editor) {
+              editor.insertBefore(container, hostBlock.nextSibling);
+            } else {
+              editor.appendChild(container);
+            }
+            ensureEditableParagraphsAroundZone(editor, container);
+          } else if ((zone.layerMode === 'inline-wrap-left' || zone.layerMode === 'inline-wrap-right') && container.parentElement !== editor) {
+            const hostBlock = container.closest('p, div, h1, h2, h3, h4, li, blockquote');
+            if (hostBlock && hostBlock.parentElement === editor) {
+              editor.insertBefore(container, hostBlock);
             }
           }
-          if (!inserted) {
-            editor.appendChild(container);
+          return;
+        }
+
+        // 4. First-time insertion into #editor-content based on zone.y coordinate
+        const blocks = Array.from(editor.children).filter((el) => !el.classList.contains('drawing-zone'));
+        let targetBlock = null;
+        for (const b of blocks) {
+          if (b.offsetTop + b.offsetHeight / 2 >= zone.y) {
+            targetBlock = b;
+            break;
           }
         }
+
+        if (zone.layerMode === 'inline-line') {
+          const pTarget = targetBlock || blocks[blocks.length - 1];
+          if (pTarget) {
+            pTarget.insertBefore(container, pTarget.firstChild);
+          } else {
+            editor.appendChild(container);
+          }
+        } else if (targetBlock) {
+          editor.insertBefore(container, targetBlock);
+        } else {
+          editor.appendChild(container);
+        }
+
+        if (zone.layerMode === 'inline-break') {
+          ensureEditableParagraphsAroundZone(editor, container);
+        }
+      }
+    }
+
+    // Helper to resolve & execute exact DOM insertion for Layer 3 Live Drag-and-Drop Reflow
+    function computeInlineDropTarget(clientX, clientY, zone) {
+      const editor = document.getElementById('editor-content');
+      const docPage = document.getElementById('doc-page');
+      if (!editor || !docPage) return null;
+
+      const pageRect = docPage.getBoundingClientRect();
+      const relY = (clientY - pageRect.top) / appState.pageZoom;
+      const relX = (clientX - pageRect.left) / appState.pageZoom;
+
+      // Mode 3D (In Line with Text): use caretRangeFromPoint to drop right between words on a line!
+      if (zone.layerMode === 'inline-line' && document.caretRangeFromPoint) {
+        const range = document.caretRangeFromPoint(clientX, clientY);
+        if (range && editor.contains(range.startContainer) && !range.startContainer.parentElement.closest('.drawing-zone')) {
+          const rRect = range.getBoundingClientRect();
+          return {
+            mode: 'caret',
+            range,
+            indicatorBox: {
+              x: Math.max(40, (rRect.left - pageRect.left) / appState.pageZoom),
+              y: Math.max(20, (rRect.top - pageRect.top) / appState.pageZoom),
+              w: 4,
+              h: Math.max(22, (rRect.height || 22) / appState.pageZoom),
+              label: 'Chèn Cùng dòng chữ tại con trỏ này'
+            }
+          };
+        }
+      }
+
+      // Modes 3A (Break Text), 3B (Float Left / Wrap Right), 3C (Float Right / Wrap Left):
+      const blocks = Array.from(editor.children).filter((el) => !el.classList.contains('drawing-zone') && el.id !== 'element-context-pill');
+      if (!blocks.length) {
+        return {
+          mode: 'append',
+          indicatorBox: { x: 64, y: 64, w: pageRect.width / appState.pageZoom - 128, h: 6, label: 'Chèn vào đầu tài liệu' }
+        };
+      }
+
+      for (const b of blocks) {
+        const bRect = b.getBoundingClientRect();
+        const bTop = (bRect.top - pageRect.top) / appState.pageZoom;
+        const bBottom = (bRect.bottom - pageRect.top) / appState.pageZoom;
+        const bMid = (bTop + bBottom) / 2;
+
+        if (relY <= bBottom + 8) {
+          // If dragging in 3A (Break Text) right in the middle of a multi-line paragraph, allow splitting the paragraph or inserting before/after
+          if (zone.layerMode === 'inline-break' && b.tagName === 'P' && relY > bTop + 18 && relY < bBottom - 18 && document.caretRangeFromPoint) {
+            const range = document.caretRangeFromPoint(clientX, clientY);
+            if (range && b.contains(range.startContainer)) {
+              const rRect = range.getBoundingClientRect();
+              const lineY = (rRect.bottom - pageRect.top) / appState.pageZoom;
+              return {
+                mode: 'split-paragraph',
+                block: b,
+                range,
+                indicatorBox: {
+                  x: 64,
+                  y: lineY,
+                  w: (bRect.width / appState.pageZoom),
+                  h: 6,
+                  label: 'Tách đoạn văn & Chèn khung vẽ Ngắt dòng (Trên & Dưới)'
+                }
+              };
+            }
+          }
+
+          const insertBefore = relY < bMid || zone.layerMode === 'inline-wrap-left' || zone.layerMode === 'inline-wrap-right';
+          const indicatorY = insertBefore ? Math.max(24, bTop - 4) : bBottom + 2;
+          const indicatorW = (zone.layerMode === 'inline-wrap-left' || zone.layerMode === 'inline-wrap-right')
+            ? Math.min(zone.width, bRect.width / appState.pageZoom)
+            : (bRect.width / appState.pageZoom);
+          const indicatorX = zone.layerMode === 'inline-wrap-right'
+            ? (bRect.right - pageRect.left) / appState.pageZoom - indicatorW
+            : (bRect.left - pageRect.left) / appState.pageZoom;
+
+          return {
+            mode: insertBefore ? 'before' : 'after',
+            block: b,
+            indicatorBox: {
+              x: indicatorX,
+              y: indicatorY,
+              w: Math.max(80, indicatorW),
+              h: (zone.layerMode === 'inline-wrap-left' || zone.layerMode === 'inline-wrap-right') ? Math.min(48, zone.height / 2) : 6,
+              label: zone.layerMode === 'inline-break'
+                ? 'Chèn Ngắt dòng — Đẩy chữ lên Trên & xuống Dưới'
+                : (zone.layerMode === 'inline-wrap-left' ? 'Neo Trái — Chữ tự động bao bên Phải' : 'Neo Phải — Chữ tự động bao bên Trái')
+            }
+          };
+        }
+      }
+
+      const lastB = blocks[blocks.length - 1];
+      const lastRect = lastB.getBoundingClientRect();
+      return {
+        mode: 'after',
+        block: lastB,
+        indicatorBox: {
+          x: (lastRect.left - pageRect.left) / appState.pageZoom,
+          y: (lastRect.bottom - pageRect.top) / appState.pageZoom + 4,
+          w: lastRect.width / appState.pageZoom,
+          h: 6,
+          label: 'Chèn vào cuối đoạn văn'
+        }
+      };
+    }
+
+    function insertInlineZoneAtTarget(editor, container, zone, target) {
+      if (!target) return;
+      if (target.mode === 'caret' && target.range) {
+        target.range.insertNode(container);
+        return;
+      }
+      if (target.mode === 'split-paragraph' && target.block && target.range) {
+        const p = target.block;
+        const afterRange = target.range.cloneRange();
+        afterRange.setEndAfter(p.lastChild || p);
+        const afterFrag = afterRange.extractContents();
+        const newP = document.createElement('p');
+        newP.appendChild(afterFrag);
+        if (!newP.innerHTML.trim()) newP.innerHTML = '<br/>';
+        if (!p.innerHTML.trim()) p.innerHTML = '<br/>';
+        editor.insertBefore(container, p.nextSibling);
+        editor.insertBefore(newP, container.nextSibling);
+        return;
+      }
+      if (target.mode === 'before' && target.block) {
+        editor.insertBefore(container, target.block);
+      } else if (target.mode === 'after' && target.block) {
+        editor.insertBefore(container, target.block.nextSibling);
+      } else {
+        editor.appendChild(container);
+      }
+      if (zone.layerMode === 'inline-break') {
+        ensureEditableParagraphsAroundZone(editor, container);
       }
     }
 
@@ -2584,8 +2927,12 @@ git push -u origin main</pre>
       const canvas = document.getElementById(`canvas_${zone.id}`);
       if (!canvas) return;
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.max(10, Math.floor(zone.width * dpr));
-      canvas.height = Math.max(10, Math.floor(zone.height * dpr));
+      const targetW = Math.max(10, Math.floor(zone.width * dpr));
+      const targetH = Math.max(10, Math.floor(zone.height * dpr));
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
+      }
     }
 
     // --- 3.3 Inverse Matrix Coordinate Mapping (Screen -> World Coordinates) ---
@@ -2593,7 +2940,6 @@ git push -u origin main</pre>
       const canvas = document.getElementById(`canvas_${zone.id}`);
       if (!canvas) return { x: 0, y: 0 };
       const rect = canvas.getBoundingClientRect();
-      // Account for page zoom scaling on #page-stage-wrapper
       const localX = (clientX - rect.left) / (rect.width / zone.width);
       const localY = (clientY - rect.top) / (rect.height / zone.height);
       const worldX = (localX - zone.viewport.offsetX) / zone.viewport.scale;
@@ -2612,27 +2958,22 @@ git push -u origin main</pre>
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, zone.width, zone.height);
 
-      // Optional Zone Background Fill
       if (zone.bgColor && zone.bgColor !== 'transparent') {
         ctx.fillStyle = zone.bgColor;
         ctx.fillRect(0, 0, zone.width, zone.height);
       }
 
-      // Apply 2D Camera Viewport Transform (Pan & Zoom inside the Drawing Zone)
       ctx.translate(zone.viewport.offsetX, zone.viewport.offsetY);
       ctx.scale(zone.viewport.scale, zone.viewport.scale);
 
-      // Subtle infinite grid dots when zoomed/panned or selected
       if (appState.activeZoneId === zone.id && (zone.viewport.scale !== 1 || zone.viewport.offsetX !== 0 || zone.viewport.offsetY !== 0)) {
         drawViewportGrid(ctx, zone);
       }
 
-      // Render all committed commands in World Coordinates
       for (const cmd of zone.commands) {
         drawSingleCommand(ctx, cmd);
       }
 
-      // Render live shape / stroke preview while dragging
       if (livePreviewCmd) {
         drawSingleCommand(ctx, livePreviewCmd);
       }
@@ -2693,7 +3034,6 @@ git push -u origin main</pre>
           ctx.fillStyle = cmd.strokeColor || '#4f46e5';
           ctx.fill();
         } else if (pts.length > 1) {
-          // Quadratic Bézier Curve Smoothing
           ctx.beginPath();
           ctx.moveTo(pts[0].x, pts[0].y);
           for (let i = 1; i < pts.length - 1; i++) {
@@ -2799,12 +3139,34 @@ git push -u origin main</pre>
 
     // --- 3.5 Interactive Zone Mouse / Wheel / Pan / Draw / Move / Resize Events ---
     let spacebarPressed = false;
-    let activeInteraction = null; // { type: 'draw'|'pan'|'move-zone'|'resize-zone'|'create-zone', ... }
+    let activeInteraction = null;
 
-    function bindZoneInteractions(container, canvas, headerBar, zone) {
-      // Hover Brush Preview inside Canvas
+    // Hit-test helper to find if (clientX, clientY) falls inside an Underlay zone or its 12px border/header
+    function findUnderlayZoneAtPoint(clientX, clientY, borderOnly = false) {
+      const docPage = document.getElementById('doc-page');
+      if (!docPage) return null;
+      const zones = Object.values(zonesMap).filter((z) => z.visible && z.layerMode === 'underlay');
+      for (let i = zones.length - 1; i >= 0; i--) {
+        const z = zones[i];
+        const el = document.getElementById(z.id);
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        const pad = 12;
+        const inOuter = clientX >= r.left - pad && clientX <= r.right + pad && clientY >= r.top - 30 && clientY <= r.bottom + pad;
+        if (!inOuter) continue;
+        if (!borderOnly) return z;
+        const inInnerCore = clientX > r.left + pad && clientX < r.right - pad && clientY > r.top + pad && clientY < r.bottom - pad;
+        if (!inInnerCore) return z;
+      }
+      return null;
+    }
+
+    function bindZoneInteractions(container, canvas, headerBar, zoneIdObj) {
+      const zoneId = zoneIdObj.id;
+
       canvas.addEventListener('mousemove', (e) => {
-        if (appState.createZoneMode) return;
+        const zone = zonesMap[zoneId];
+        if (!zone || appState.createZoneMode) return;
         const brushEl = document.getElementById('brush-cursor-preview');
         if (!brushEl) return;
         if (spacebarPressed || appState.drawConfig.tool === 'pan') {
@@ -2830,8 +3192,9 @@ git push -u origin main</pre>
         if (brushEl) brushEl.style.display = 'none';
       });
 
-      // Zoom In / Out inside Zone via Mouse Wheel (Ctrl/Alt + Wheel or direct Wheel when zone is selected)
       canvas.addEventListener('wheel', (e) => {
+        const zone = zonesMap[zoneId];
+        if (!zone) return;
         if (e.ctrlKey || e.altKey || appState.activeZoneId === zone.id) {
           e.preventDefault();
           e.stopPropagation();
@@ -2842,7 +3205,6 @@ git push -u origin main</pre>
           const mouseX = (e.clientX - rect.left) / (rect.width / zone.width);
           const mouseY = (e.clientY - rect.top) / (rect.height / zone.height);
 
-          // Zoom toward mouse position
           zone.viewport.offsetX = mouseX - (mouseX - zone.viewport.offsetX) * (newScale / zone.viewport.scale);
           zone.viewport.offsetY = mouseY - (mouseY - zone.viewport.offsetY) * (newScale / zone.viewport.scale);
           zone.viewport.scale = newScale;
@@ -2853,9 +3215,9 @@ git push -u origin main</pre>
         }
       }, { passive: false });
 
-      // Canvas Mousedown: Pan or Draw
       canvas.addEventListener('mousedown', (e) => {
-        if (appState.createZoneMode) return;
+        const zone = zonesMap[zoneId];
+        if (!zone || appState.createZoneMode) return;
         e.stopPropagation();
         selectDrawingZone(zone.id);
         if (zone.locked) {
@@ -2863,7 +3225,6 @@ git push -u origin main</pre>
           return;
         }
 
-        // Pan Viewport if Spacebar held, Middle click, or Pan tool active
         if (spacebarPressed || e.button === 1 || appState.drawConfig.tool === 'pan') {
           e.preventDefault();
           activeInteraction = {
@@ -2879,7 +3240,6 @@ git push -u origin main</pre>
 
         const worldPt = screenToWorldCoordinates(e.clientX, e.clientY, zone);
 
-        // Text Stamp Tool
         if (appState.drawConfig.tool === 'text') {
           appState.pendingTextStamp = { zoneId: zone.id, pt: worldPt };
           openModal('modal-canvas-text');
@@ -2891,7 +3251,6 @@ git push -u origin main</pre>
           return;
         }
 
-        // Freehand or Shape Tool
         const cmd = {
           tool: appState.drawConfig.tool,
           shapeMode: appState.drawConfig.shapeMode,
@@ -2911,19 +3270,32 @@ git push -u origin main</pre>
         renderZoneCanvas(zone, cmd);
       });
 
-      // Header Bar & Border Edge Dragging to Move the Zone
       const startMoveZone = (e) => {
         if (e.target.closest('button')) return;
+        const zone = zonesMap[zoneId];
+        if (!zone) return;
         e.preventDefault();
         e.stopPropagation();
         selectDrawingZone(zone.id);
+
+        const docPage = document.getElementById('doc-page');
+        const pageRect = docPage.getBoundingClientRect();
+        const elRect = container.getBoundingClientRect();
+        const curX = Math.round((elRect.left - pageRect.left) / appState.pageZoom);
+        const curY = Math.round((elRect.top - pageRect.top) / appState.pageZoom);
+
+        if (isInlineLayerMode(zone.layerMode)) {
+          container.classList.add('dragging-inline');
+        }
+
         activeInteraction = {
           type: 'move-zone',
           zoneId: zone.id,
           startX: e.clientX,
           startY: e.clientY,
-          origX: zone.x,
-          origY: zone.y
+          origX: isInlineLayerMode(zone.layerMode) ? curX : zone.x,
+          origY: isInlineLayerMode(zone.layerMode) ? curY : zone.y,
+          dropTarget: null
         };
       };
 
@@ -2932,9 +3304,10 @@ git push -u origin main</pre>
         edgeEl.addEventListener('mousedown', startMoveZone);
       });
 
-      // 8-Point Resize Handles
       container.querySelectorAll('.resize-handle').forEach((handle) => {
         handle.addEventListener('mousedown', (e) => {
+          const zone = zonesMap[zoneId];
+          if (!zone) return;
           e.preventDefault();
           e.stopPropagation();
           selectDrawingZone(zone.id);
@@ -2953,12 +3326,60 @@ git push -u origin main</pre>
       });
     }
 
-    // Global Document Page Mousedown for Create Drawing Zone Mode
     function initGlobalStageEvents() {
       const docPage = document.getElementById('doc-page');
+      const editor = document.getElementById('editor-content');
       const tooltip = document.getElementById('create-zone-tooltip');
       const marquee = document.getElementById('creation-marquee');
       const marqueeLabel = document.getElementById('creation-marquee-label');
+      const dropIndicator = document.getElementById('inline-drop-indicator');
+      const dropIndicatorLabel = document.getElementById('inline-drop-indicator-label');
+
+      // LỖI 1 FIX — Capture-phase Pointer Routing for Underlay Zones:
+      // 1. Double-clicking or Alt+clicking over an Underlay zone inside #editor-content immediately activates & selects that Underlay zone!
+      // 2. Clicking outside an active Underlay zone immediately returns pointer control to #editor-content so normal typing works seamlessly!
+      if (docPage) {
+        docPage.addEventListener('dblclick', (e) => {
+          if (appState.createZoneMode) return;
+          const hitUnderlay = findUnderlayZoneAtPoint(e.clientX, e.clientY, false);
+          if (hitUnderlay) {
+            e.preventDefault();
+            e.stopPropagation();
+            selectDrawingZone(hitUnderlay.id);
+            showToast(`Đã kích hoạt ${hitUnderlay.name} (Lớp dưới chữ): Bạn có thể vẽ tiếp, kéo viền hoặc nhấp ra ngoài để gõ chữ`);
+          }
+        }, true);
+
+        docPage.addEventListener('mousedown', (e) => {
+          if (appState.createZoneMode) return;
+
+          // Alt + Click anywhere over an Underlay zone selects it immediately
+          if (e.altKey) {
+            const hitUnderlay = findUnderlayZoneAtPoint(e.clientX, e.clientY, false);
+            if (hitUnderlay) {
+              e.preventDefault();
+              e.stopPropagation();
+              selectDrawingZone(hitUnderlay.id);
+              showToast(`Đã chọn ${hitUnderlay.name} (Lớp dưới chữ)`);
+              return;
+            }
+          }
+
+          // If an Underlay zone is currently selected and the user clicks OUTSIDE its bounding box (and not on its header/handles), exit Underlay drawing mode so #editor-content receives the click for normal typing!
+          const activeZone = appState.activeZoneId ? zonesMap[appState.activeZoneId] : null;
+          if (activeZone && activeZone.layerMode === 'underlay') {
+            const el = document.getElementById(activeZone.id);
+            if (el) {
+              const r = el.getBoundingClientRect();
+              const pad = 14;
+              const insideActive = e.clientX >= r.left - pad && e.clientX <= r.right + pad && e.clientY >= r.top - 34 && e.clientY <= r.bottom + pad;
+              if (!insideActive) {
+                selectDrawingZone(null);
+              }
+            }
+          }
+        }, true);
+      }
 
       window.addEventListener('mousemove', (e) => {
         if (appState.createZoneMode && tooltip) {
@@ -3014,14 +3435,26 @@ git push -u origin main</pre>
           const dy = (e.clientY - activeInteraction.startY) / appState.pageZoom;
           zone.x = Math.max(0, Math.round(activeInteraction.origX + dx));
           zone.y = Math.max(0, Math.round(activeInteraction.origY + dy));
+
           const el = document.getElementById(zone.id);
           if (el) {
-            if (zone.layerMode === 'overlay' || zone.layerMode === 'underlay') {
+            if (!isInlineLayerMode(zone.layerMode)) {
               el.style.left = `${zone.x}px`;
               el.style.top = `${zone.y}px`;
             } else {
-              // Reflow inline zone among paragraphs as user drags vertically
-              applyZoneLayerPlacement(el, zone);
+              // LỖI 2 FIX — Live Drag-and-Drop Reflow Indicator for Layer 3 (Inline / Flow with Text)
+              const target = computeInlineDropTarget(e.clientX, e.clientY, zone);
+              activeInteraction.dropTarget = target;
+              if (target && target.indicatorBox && dropIndicator) {
+                dropIndicator.style.display = 'block';
+                dropIndicator.style.left = `${target.indicatorBox.x}px`;
+                dropIndicator.style.top = `${target.indicatorBox.y}px`;
+                dropIndicator.style.width = `${target.indicatorBox.w}px`;
+                dropIndicator.style.height = `${target.indicatorBox.h}px`;
+                if (dropIndicatorLabel) {
+                  dropIndicatorLabel.textContent = target.indicatorBox.label || 'Thả khung vẽ vào đây';
+                }
+              }
             }
           }
         } else if (activeInteraction.type === 'resize-zone') {
@@ -3033,18 +3466,18 @@ git push -u origin main</pre>
           let nw = activeInteraction.origW;
           let nh = activeInteraction.origH;
 
-          if (dir.includes('e')) nw = Math.max(100, activeInteraction.origW + dx);
-          if (dir.includes('s')) nh = Math.max(70, activeInteraction.origH + dy);
+          if (dir.includes('e')) nw = Math.max(90, activeInteraction.origW + dx);
+          if (dir.includes('s')) nh = Math.max(60, activeInteraction.origH + dy);
           if (dir.includes('w')) {
             const possibleW = activeInteraction.origW - dx;
-            if (possibleW >= 100) {
+            if (possibleW >= 90) {
               nw = possibleW;
               nx = activeInteraction.origX + dx;
             }
           }
           if (dir.includes('n')) {
             const possibleH = activeInteraction.origH - dy;
-            if (possibleH >= 70) {
+            if (possibleH >= 60) {
               nh = possibleH;
               ny = activeInteraction.origY + dy;
             }
@@ -3059,7 +3492,7 @@ git push -u origin main</pre>
           if (el) {
             el.style.width = `${zone.width}px`;
             el.style.height = `${zone.height}px`;
-            if (zone.layerMode === 'overlay' || zone.layerMode === 'underlay') {
+            if (!isInlineLayerMode(zone.layerMode)) {
               el.style.left = `${zone.x}px`;
               el.style.top = `${zone.y}px`;
             }
@@ -3071,6 +3504,10 @@ git push -u origin main</pre>
 
       window.addEventListener('mouseup', () => {
         if (!activeInteraction) return;
+
+        if (dropIndicator) {
+          dropIndicator.style.display = 'none';
+        }
 
         if (activeInteraction.type === 'create-zone') {
           const box = activeInteraction.box;
@@ -3086,6 +3523,7 @@ git push -u origin main</pre>
               width: Math.round(box.w),
               height: Math.round(box.h),
               layerMode: selectedLayer,
+              inlineAlign: 'center',
               clickThrough: false,
               visible: true,
               locked: false,
@@ -3101,19 +3539,26 @@ git push -u origin main</pre>
             renderLayersSidebar();
             updateStatusBar();
             scheduleAutoSave();
-            showToast(`Đã khởi tạo ${newZone.name} (${newZone.width}×${newZone.height} px)`);
+            showToast(`Đã khởi tạo ${newZone.name} (${formatLayerName(selectedLayer)})`);
           }
           activeInteraction = null;
           return;
         }
 
         const zone = zonesMap[activeInteraction.zoneId];
-        if (zone && activeInteraction.type === 'draw') {
-          zone.commands.push(activeInteraction.cmd);
-          zone.redoStack = [];
-          renderZoneCanvas(zone);
-          scheduleAutoSave();
-        } else if (zone) {
+        if (zone) {
+          const el = document.getElementById(zone.id);
+          if (el) el.classList.remove('dragging-inline');
+
+          if (activeInteraction.type === 'draw') {
+            zone.commands.push(activeInteraction.cmd);
+            zone.redoStack = [];
+            renderZoneCanvas(zone);
+          } else if (activeInteraction.type === 'move-zone' && isInlineLayerMode(zone.layerMode) && activeInteraction.dropTarget && el) {
+            applyZoneLayerPlacement(el, zone, activeInteraction.dropTarget);
+            renderZoneCanvas(zone);
+            showToast(`Đã di chuyển ${zone.name} và tự động dàn lại dòng văn bản`);
+          }
           scheduleAutoSave();
         }
         activeInteraction = null;
@@ -3136,7 +3581,6 @@ git push -u origin main</pre>
         });
       }
 
-      // Keyboard Shortcuts (Spacebar Pan, Escape, Ctrl+F, Alt+D)
       window.addEventListener('keydown', (e) => {
         if (e.code === 'Space' && document.activeElement !== document.getElementById('editor-content') && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
           spacebarPressed = true;
@@ -3144,6 +3588,9 @@ git push -u origin main</pre>
         if (e.key === 'Escape') {
           stopCreateZoneMode();
           closeAllTopDropdowns();
+          if (appState.activeZoneId) {
+            selectDrawingZone(null);
+          }
         }
         if ((e.key === 'Delete' || e.key === 'Backspace') && appState.activeZoneId && document.activeElement !== document.getElementById('editor-content') && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
           e.preventDefault();
@@ -3152,13 +3599,11 @@ git push -u origin main</pre>
         }
         if (selectedEditorNode && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
           const tag = selectedEditorNode.tagName;
-          // Direct Delete/Backspace for non-editable objects (IMG, HR) or Shift+Delete / Alt+Delete for any selected container (TABLE, PRE, BLOCKQUOTE, Checklist, A)
           if ((e.key === 'Delete' || e.key === 'Backspace') && (tag === 'IMG' || tag === 'HR' || e.shiftKey || e.altKey)) {
             e.preventDefault();
             deleteSelectedEditorNode();
             return;
           }
-          // Also if inside an empty PRE, BLOCKQUOTE, or Checklist and pressing Backspace/Delete, remove the block cleanly
           if ((e.key === 'Backspace' || e.key === 'Delete') && (tag === 'PRE' || tag === 'BLOCKQUOTE' || selectedEditorNode.classList.contains('doc-checklist'))) {
             if ((selectedEditorNode.innerText || '').trim().length === 0) {
               e.preventDefault();
@@ -3185,6 +3630,14 @@ git push -u origin main</pre>
     }
 
     // --- 3.6 Drawing Studio Toolbar Actions & Layer Switching ---
+    function syncUnderlayPassThroughState() {
+      const editor = document.getElementById('editor-content');
+      if (!editor) return;
+      const activeZone = appState.activeZoneId ? zonesMap[appState.activeZoneId] : null;
+      const isUnderlaySelected = !!(activeZone && activeZone.layerMode === 'underlay');
+      editor.classList.toggle('underlay-pass-through', isUnderlaySelected);
+    }
+
     function selectDrawingZone(zoneId) {
       appState.activeZoneId = zoneId;
       if (zoneId) {
@@ -3196,6 +3649,8 @@ git push -u origin main</pre>
       document.querySelectorAll('.drawing-zone').forEach((el) => {
         el.classList.toggle('selected', el.id === zoneId);
       });
+      syncUnderlayPassThroughState();
+
       const zone = zoneId ? zonesMap[zoneId] : null;
       if (zone) {
         const layerSelect = document.getElementById('active-zone-layer-select');
@@ -3213,11 +3668,20 @@ git push -u origin main</pre>
 
     function selectDrawTool(toolName) {
       appState.drawConfig.tool = toolName;
+      appState.drawingToolActive = true;
       document.querySelectorAll('.draw-tool-btn').forEach((btn) => {
         const isCurrent = btn.getAttribute('data-draw-tool') === toolName;
         btn.classList.toggle('bg-indigo-600', isCurrent);
         btn.classList.toggle('text-white', isCurrent);
       });
+      // If no zone is currently selected and user clicks a brush tool, auto-select the first Underlay zone if present so they can draw on it immediately
+      if (!appState.activeZoneId) {
+        const firstUnderlay = Object.values(zonesMap).find((z) => z.visible && z.layerMode === 'underlay');
+        if (firstUnderlay) {
+          selectDrawingZone(firstUnderlay.id);
+        }
+      }
+      syncUnderlayPassThroughState();
     }
 
     function updateDrawConfig(key, value) {
@@ -3275,12 +3739,10 @@ git push -u origin main</pre>
       scheduleAutoSave();
     }
 
-    function changeActiveZoneLayerMode(newLayerMode) {
-      if (!appState.activeZoneId || !zonesMap[appState.activeZoneId]) {
-        showToast('Hãy chọn một Không gian vẽ trước để đổi chế độ Lớp', 'warn');
-        return;
-      }
-      const zone = zonesMap[appState.activeZoneId];
+    function setZoneLayerDirect(zoneId, newLayerMode, event) {
+      if (event) event.stopPropagation();
+      const zone = zonesMap[zoneId];
+      if (!zone) return;
       zone.layerMode = newLayerMode;
       mountDrawingZoneDOM(zone);
       selectDrawingZone(zone.id);
@@ -3288,17 +3750,21 @@ git push -u origin main</pre>
       showToast(`Đã chuyển ${zone.name} sang ${formatLayerName(newLayerMode)}`);
     }
 
+    function changeActiveZoneLayerMode(newLayerMode) {
+      if (!appState.activeZoneId || !zonesMap[appState.activeZoneId]) {
+        showToast('Hãy chọn một Không gian vẽ trước để đổi chế độ Lớp', 'warn');
+        return;
+      }
+      setZoneLayerDirect(appState.activeZoneId, newLayerMode);
+    }
+
     function cycleZoneLayerMode(zoneId, event) {
       if (event) event.stopPropagation();
       const zone = zonesMap[zoneId];
       if (!zone) return;
-      const order = ['overlay', 'underlay', 'inline-break', 'inline-wrap-right', 'inline-wrap-left'];
+      const order = ['overlay', 'underlay', 'inline-break', 'inline-wrap-left', 'inline-wrap-right', 'inline-line'];
       const nextIdx = (order.indexOf(zone.layerMode) + 1) % order.length;
-      zone.layerMode = order[nextIdx];
-      mountDrawingZoneDOM(zone);
-      selectDrawingZone(zoneId);
-      scheduleAutoSave();
-      showToast(`${zone.name}: ${formatLayerName(zone.layerMode)}`);
+      setZoneLayerDirect(zoneId, order[nextIdx]);
     }
 
     function toggleActiveZoneClickThrough() {
@@ -3476,8 +3942,8 @@ git push -u origin main</pre>
       const zone = zonesMap[zoneId];
       if (!zone) return;
       zone.zoneOpacity = (parseInt(pctValue, 10) || 100) / 100;
-      const el = document.getElementById(zoneId);
-      if (el) el.style.opacity = String(zone.zoneOpacity);
+      const canvas = document.getElementById(`canvas_${zoneId}`);
+      if (canvas) canvas.style.opacity = String(zone.zoneOpacity);
     }
 
     /* ============================================================================
@@ -3488,7 +3954,12 @@ git push -u origin main</pre>
       const editor = document.getElementById('editor-content');
       if (!editor) return '';
       const clone = editor.cloneNode(true);
-      clone.querySelectorAll('.drawing-zone').forEach((z) => z.remove());
+      clone.querySelectorAll('.drawing-zone').forEach((z) => {
+        const marker = document.createElement('span');
+        marker.setAttribute('data-inline-zone-anchor', z.id);
+        marker.style.display = 'none';
+        z.replaceWith(marker);
+      });
       return clone.innerHTML;
     }
 
@@ -3520,8 +3991,8 @@ git push -u origin main</pre>
     async function saveCurrentDocumentNow() {
       const payload = buildCurrentDocumentPayload();
       appState.documents[payload.id] = payload;
-      safeLocalSet('docucanvas_docs_map', appState.documents);
-      safeLocalSet('docucanvas_active_doc_id', payload.id);
+      safeLocalSet('docucanvas_docs_map_v2', appState.documents);
+      safeLocalSet('docucanvas_active_doc_id_v2', payload.id);
       await saveDocToIDB(payload);
 
       const nowStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -3687,7 +4158,7 @@ git push -u origin main</pre>
         return;
       }
       delete appState.documents[docId];
-      safeLocalSet('docucanvas_docs_map', appState.documents);
+      safeLocalSet('docucanvas_docs_map_v2', appState.documents);
       if (appState.currentDocId === docId) {
         const nextDoc = Object.values(appState.documents)[0];
         loadDocumentIntoWorkspace(nextDoc);
@@ -4326,8 +4797,8 @@ git push -u origin main</pre>
       updateUserProfileUI();
 
       // Load Saved Documents or Initialize Default Showcase Document
-      const savedDocs = safeLocalGet('docucanvas_docs_map', null);
-      const savedActiveId = safeLocalGet('docucanvas_active_doc_id', 'doc_default_01');
+      const savedDocs = safeLocalGet('docucanvas_docs_map_v2', null);
+      const savedActiveId = safeLocalGet('docucanvas_active_doc_id_v2', 'doc_default_01');
 
       if (savedDocs && Object.keys(savedDocs).length > 0) {
         appState.documents = savedDocs;
